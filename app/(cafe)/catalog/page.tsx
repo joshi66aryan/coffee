@@ -1,3 +1,5 @@
-export default function Page() {
-  return <div>catalog</div>;
+import { redirect } from 'next/navigation'
+
+export default function CatalogPage() {
+  redirect('/')
 }

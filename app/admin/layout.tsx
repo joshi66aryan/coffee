@@ -29,7 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               ))}
             </nav>
           </div>
-          <SignOutButton />
+          <SignOutButton showLabel />
         </div>
         {/* Mobile nav */}
         <nav className="sm:hidden flex border-t border-gray-100">

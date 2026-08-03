@@ -14,6 +14,10 @@ export interface Cafe {
 
 export type StockStatus = 'in_stock' | 'low' | 'out_of_stock'
 
+export interface CatalogProduct extends Product {
+  effective_price: number
+}
+
 export interface Product {
   id: string
   name: string
