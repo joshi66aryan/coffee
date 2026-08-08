@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Info, MessageCircle } from 'lucide-react'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { PushNotificationToggle } from '@/components/cafe/push-notification-toggle'
+import { InstallAppRow } from '@/components/cafe/install-app-row'
 import { SUPPORT_WHATSAPP_LINK } from '@/lib/cafe/constants'
 import { getPushSubscriptionStatus } from '@/lib/push/actions'
 
@@ -35,6 +36,7 @@ export default async function AppSettingsPage() {
         <PushNotificationToggle initialSubscribed={subscribed} />
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
+          <InstallAppRow />
           <a
             href={SUPPORT_WHATSAPP_LINK}
             target="_blank"

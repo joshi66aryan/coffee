@@ -4,6 +4,7 @@ import { CatalogClient } from '@/components/cafe/catalog-client'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { RepeatLastOrderCard } from '@/components/cafe/repeat-last-order-card'
 import { NotificationPromptBanner } from '@/components/cafe/notification-prompt-banner'
+import { InstallPromptBanner } from '@/components/ui/install-prompt-banner'
 import { RealtimeRefresh } from '@/components/ui/realtime-refresh'
 import { getPushSubscriptionStatus } from '@/lib/push/actions'
 import { groupItemsByOrder, type OrderItemPreviewRow } from '@/lib/cafe/order-preview'
@@ -68,6 +69,7 @@ export default async function HomePage() {
       <RealtimeRefresh table="products" />
       <CafeHeader cafeName={cafe?.name} />
       <NotificationPromptBanner initialSubscribed={pushStatus.subscribed} />
+      <InstallPromptBanner />
 
       {lastOrder && lastOrderItems.length > 0 && (
         <RepeatLastOrderCard
