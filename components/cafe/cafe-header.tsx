@@ -3,14 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ShoppingBasket, ClipboardList, User } from 'lucide-react'
-import { SignOutButton } from '@/components/sign-out-button'
-
-const NAV_ITEMS = [
-  { href: '/', label: 'Shop', icon: ShoppingBasket },
-  { href: '/orders', label: 'Orders', icon: ClipboardList },
-  { href: '/profile', label: 'Profile', icon: User },
-]
+import { CAFE_NAV_ITEMS } from '@/lib/cafe/nav-items'
 
 export function CafeHeader({ cafeName }: { cafeName?: string }) {
   const pathname = usePathname()
@@ -42,7 +35,7 @@ export function CafeHeader({ cafeName }: { cafeName?: string }) {
 
       {/* Desktop nav — hidden on mobile, shown sm+ */}
       <nav className="hidden sm:flex items-center gap-0.5">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {CAFE_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href
           const showBadge = href === '/orders' && cartCount > 0
           return (
@@ -67,15 +60,7 @@ export function CafeHeader({ cafeName }: { cafeName?: string }) {
             </Link>
           )
         })}
-        <div className="ml-3 pl-3 border-l border-gray-200">
-          <SignOutButton />
-        </div>
       </nav>
-
-      {/* Mobile — sign out only, nav is in bottom bar */}
-      <div className="sm:hidden">
-        <SignOutButton />
-      </div>
     </header>
   )
 }

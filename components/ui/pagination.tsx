@@ -6,14 +6,15 @@ interface Props {
   pageSize: number
   basePath: string
   q?: string
+  extraParams?: Record<string, string>
 }
 
-export function Pagination({ page, total, pageSize, basePath, q }: Props) {
+export function Pagination({ page, total, pageSize, basePath, q, extraParams }: Props) {
   const totalPages = Math.ceil(total / pageSize)
   if (totalPages <= 1) return null
 
   function href(p: number) {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams(extraParams)
     params.set('page', String(p))
     if (q) params.set('q', q)
     return `${basePath}?${params.toString()}`

@@ -55,7 +55,7 @@ function ProductCard({
   quantity: number
   onSetQty: (id: string, qty: number) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const orderable = product.stock_status !== 'out_of_stock'
   const hasLongDesc = (product.description?.length ?? 0) > DESC_LIMIT
 
@@ -79,18 +79,14 @@ function ProductCard({
         <p className="font-semibold text-gray-900 text-xs leading-snug line-clamp-2">{product.name}</p>
 
         {product.description && (
-          <div>
-            <p className="text-[10px] text-gray-400 leading-relaxed">
-              {expanded || !hasLongDesc
-                ? product.description
-                : `${product.description.slice(0, DESC_LIMIT)}…`}
-            </p>
+          <div className="flex items-baseline gap-1 min-w-0">
+            <p className="text-[10px] text-gray-400 truncate min-w-0 flex-1">{product.description}</p>
             {hasLongDesc && (
               <button
-                onClick={e => { e.stopPropagation(); setExpanded(v => !v) }}
-                className="text-[10px] text-amber-600 font-semibold mt-0.5"
+                onClick={e => { e.stopPropagation(); setShowDetails(true) }}
+                className="text-[10px] text-amber-600 font-semibold shrink-0"
               >
-                {expanded ? 'Show less' : 'Read more'}
+                Read more
               </button>
             )}
           </div>
@@ -133,6 +129,37 @@ function ProductCard({
           )}
         </div>
       </div>
+
+      {showDetails && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowDetails(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="relative w-full h-40 bg-amber-50 flex items-center justify-center overflow-hidden">
+              <ProductImage src={product.image_url} alt={product.name} />
+              <button
+                onClick={() => setShowDetails(false)}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-gray-600 hover:bg-white shadow-sm"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2">
+              <p className="font-semibold text-gray-900 text-sm">{product.name}</p>
+              <p className="text-xs text-gray-500 leading-relaxed">{product.description}</p>
+              <p className="text-sm font-bold text-amber-900">
+                {formatPrice(product.effective_price)}{' '}
+                <span className="text-xs font-normal text-gray-400">/ {product.unit}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -147,7 +174,6 @@ export function CatalogClient({
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [cartLoaded, setCartLoaded] = useState(false)
   const [search, setSearch] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   // Load cart after hydration — keeps server/client HTML in sync
@@ -190,7 +216,7 @@ export function CatalogClient({
       {/* Sticky filter bar — stays below the header (h-14 = 56px) */}
       <div className="sticky top-14 z-10 px-3 pt-2.5 pb-2 bg-white border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-2">
-          {categories.length > 1 && !searchOpen && (
+          {categories.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide flex-1 min-w-0">
               <button
                 onClick={() => setActiveCategory(null)}
@@ -218,30 +244,25 @@ export function CatalogClient({
             </div>
           )}
 
-          {searchOpen && (
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              <input
-                autoFocus
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search products…"
-                className="w-full pl-9 pr-3 py-2 bg-gray-100 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:bg-gray-50 focus:ring-2 focus:ring-amber-200 transition-all"
-              />
-            </div>
-          )}
-
-          <button
-            onClick={() => {
-              if (searchOpen) { setSearch(''); setSearchOpen(false) }
-              else setSearchOpen(true)
-            }}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500"
-            aria-label={searchOpen ? 'Close search' : 'Open search'}
-          >
-            {searchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-          </button>
+          <div className={`relative shrink-0 ${categories.length > 1 ? 'w-28 sm:w-44' : 'flex-1'}`}>
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Filter…"
+              className="w-full pl-7 pr-6 py-1.5 bg-gray-100 rounded-full text-xs text-gray-900 placeholder-gray-400 outline-none focus:bg-white border border-transparent focus:ring-2 focus:ring-amber-200 focus:border-amber-200 transition-all"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                aria-label="Clear filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

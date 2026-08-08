@@ -47,7 +47,7 @@ export function SearchInput({ placeholder = 'Search…' }: Props) {
         defaultValue={searchParams.get('q') ?? ''}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
-        className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+        className="pl-9 pr-8 py-2 text-sm text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent [&::-webkit-search-cancel-button]:appearance-none"
       />
       {isPending && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />

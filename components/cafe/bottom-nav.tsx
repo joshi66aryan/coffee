@@ -3,15 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ShoppingBasket, ClipboardList, User } from 'lucide-react'
+import { CAFE_NAV_ITEMS } from '@/lib/cafe/nav-items'
 
 const SHOW_ON = ['/', '/orders', '/profile']
-
-const NAV_ITEMS = [
-  { href: '/', label: 'Shop', icon: ShoppingBasket },
-  { href: '/orders', label: 'Orders', icon: ClipboardList },
-  { href: '/profile', label: 'Profile', icon: User },
-]
 
 export function BottomNav() {
   const pathname = usePathname()
@@ -40,7 +34,7 @@ export function BottomNav() {
   return (
     // Only visible on mobile — sm+ uses the CafeHeader nav
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 flex h-16">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+      {CAFE_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href
         const showBadge = href === '/orders' && cartCount > 0
 

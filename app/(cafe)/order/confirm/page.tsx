@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { ClearCartOnMount } from '@/components/cafe/clear-cart-on-mount'
 import type { Order } from '@/lib/types'
 import logger from '@/lib/logger'
 
@@ -47,6 +48,7 @@ export default async function ConfirmPage({
 
   return (
     <main className="min-h-screen bg-linear-to-b from-amber-50 to-white flex flex-col items-center justify-center px-4 py-12">
+      <ClearCartOnMount />
       <div className="max-w-sm w-full space-y-4">
         {/* Success animation */}
         <div className="text-center mb-2">

@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShoppingBasket, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { ShoppingBasket, Loader2, AlertTriangle } from 'lucide-react'
 import { getCartProducts } from '@/lib/cafe/catalog-actions'
 import { placeOrder } from '@/lib/cafe/order-actions'
+import { hasOutOfStockItems } from '@/lib/cafe/cart'
 import type { CatalogProduct, PaymentType } from '@/lib/types'
 
 function formatPrice(n: number) {
@@ -51,11 +53,13 @@ export function CartSection({ creditEnabled }: { creditEnabled: boolean }) {
 
   const activeItems = products.filter(p => (quantities[p.id] ?? 0) > 0)
   const total = activeItems.reduce((sum, p) => sum + p.effective_price * (quantities[p.id] ?? 0), 0)
+  const outOfStock = hasOutOfStockItems(activeItems)
 
   if (loading) return null
   if (activeItems.length === 0) return null
 
   function handlePlace() {
+    if (outOfStock) return
     setError(null)
     startTransition(async () => {
       const result = await placeOrder({
@@ -63,9 +67,10 @@ export function CartSection({ creditEnabled }: { creditEnabled: boolean }) {
         payment_type: paymentType,
       })
       if ('error' in result) { setError(result.error); return }
-      try { localStorage.removeItem('sherpa-cart') } catch {}
+      // Cleared on the confirmation page instead of here — clearing before
+      // navigating away lets this page's own empty-cart state flash through
+      // for a moment while the new route is still loading.
       router.push(`/order/confirm?orderId=${result.orderId}`)
-      router.refresh()
     })
   }
 
@@ -80,31 +85,63 @@ export function CartSection({ creditEnabled }: { creditEnabled: boolean }) {
         </span>
       </div>
 
+      {/* Out-of-stock warning */}
+      {outOfStock && (
+        <div className="mx-4 mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+          <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+          <p className="text-xs text-red-700">
+            <span className="font-semibold">Some items are no longer in stock.</span>{' '}
+            Remove them to place your order, or{' '}
+            <Link href="/" className="underline font-medium">
+              browse the catalog
+            </Link>{' '}
+            for a replacement.
+          </p>
+        </div>
+      )}
+
       {/* Items */}
       <div className="divide-y divide-gray-100">
         {activeItems.map(product => {
           const qty = quantities[product.id] ?? 0
+          const unavailable = product.stock_status === 'out_of_stock'
           return (
-            <div key={product.id} className="px-4 py-3 flex items-center gap-3">
+            <div key={product.id} className={`px-4 py-3 flex items-center gap-3 ${unavailable ? 'opacity-70' : ''}`}>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
+                  {unavailable && (
+                    <span className="shrink-0 text-[10px] font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full">
+                      Out of Stock
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400">{formatPrice(product.effective_price)} / {product.unit}</p>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              {unavailable ? (
                 <button
-                  onClick={() => setQty(product.id, qty - 1)}
-                  className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold text-base flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all leading-none"
+                  onClick={() => setQty(product.id, 0)}
+                  className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-800 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  −
+                  Remove
                 </button>
-                <span className="w-5 text-center text-sm font-bold tabular-nums">{qty}</span>
-                <button
-                  onClick={() => setQty(product.id, qty + 1)}
-                  className="w-7 h-7 rounded-full bg-amber-100 text-amber-800 font-bold text-base flex items-center justify-center hover:bg-amber-200 active:scale-95 transition-all leading-none"
-                >
-                  +
-                </button>
-              </div>
+              ) : (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => setQty(product.id, qty - 1)}
+                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold text-base flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all leading-none"
+                  >
+                    −
+                  </button>
+                  <span className="w-5 text-center text-sm font-bold tabular-nums">{qty}</span>
+                  <button
+                    onClick={() => setQty(product.id, qty + 1)}
+                    className="w-7 h-7 rounded-full bg-amber-100 text-amber-800 font-bold text-base flex items-center justify-center hover:bg-amber-200 active:scale-95 transition-all leading-none"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
               <p className="text-sm font-bold text-gray-900 w-16 text-right shrink-0">
                 {formatPrice(product.effective_price * qty)}
               </p>
@@ -145,7 +182,7 @@ export function CartSection({ creditEnabled }: { creditEnabled: boolean }) {
 
         <button
           onClick={handlePlace}
-          disabled={isPending}
+          disabled={isPending || outOfStock}
           className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold rounded-xl py-3.5 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         >
           {isPending ? (
@@ -153,6 +190,8 @@ export function CartSection({ creditEnabled }: { creditEnabled: boolean }) {
               <Loader2 className="w-4 h-4 animate-spin" />
               Placing Order…
             </>
+          ) : outOfStock ? (
+            'Remove unavailable items to continue'
           ) : (
             `Place Order · ${formatPrice(total)}`
           )}

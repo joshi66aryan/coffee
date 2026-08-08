@@ -1,10 +1,11 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { getCafes } from '@/lib/admin/actions'
 import { PAGE_SIZE } from '@/lib/admin/constants'
 import { CafeApprovalActions } from '@/components/admin/cafe-approval-actions'
-import { CafesRealtime } from '@/components/admin/cafes-realtime'
 import { SearchInput } from '@/components/admin/search-input'
-import { Pagination } from '@/components/admin/pagination'
+import { Pagination } from '@/components/ui/pagination'
+import { RealtimeRefresh } from '@/components/ui/realtime-refresh'
 import type { Cafe, CafeStatus } from '@/lib/types'
 
 export const metadata = { title: 'Cafés — Admin' }
@@ -44,9 +45,17 @@ function CafeRow({ cafe, showActions }: { cafe: Cafe; showActions: boolean }) {
         })}
       </td>
       <td className="py-3 text-right">
-        {showActions && cafe.status === 'pending' && (
-          <CafeApprovalActions cafeId={cafe.id} />
-        )}
+        <div className="flex items-center justify-end gap-3">
+          {showActions && cafe.status === 'pending' && (
+            <CafeApprovalActions cafeId={cafe.id} />
+          )}
+          <Link
+            href={`/admin/cafes/${cafe.id}`}
+            className="text-sm text-amber-700 hover:text-amber-900 font-medium whitespace-nowrap"
+          >
+            View →
+          </Link>
+        </div>
       </td>
     </tr>
   )
@@ -106,7 +115,7 @@ export default async function AdminCafesPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <CafesRealtime />
+      <RealtimeRefresh table="cafes" />
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between mb-6">
           <div>

@@ -62,3 +62,49 @@ export interface OrderItem {
   quantity: number
   unit_price_at_time_of_order: number
 }
+
+export interface AdminOrder extends Order {
+  cafe_name: string
+}
+
+export interface OrderLineItem {
+  id: string
+  product_id: string
+  name: string
+  unit: string
+  quantity: number
+  unit_price_at_time_of_order: number
+}
+
+export interface CafeProductPricingRow {
+  product_id: string
+  name: string
+  category: string
+  unit: string
+  base_price: number
+  custom_price: number | null
+}
+
+export interface OrderItemPreview {
+  product_id: string
+  name: string
+  image_url: string | null
+  quantity: number
+}
+
+export interface OrderWithPreview extends Order {
+  items: OrderItemPreview[]
+}
+
+export interface Invoice {
+  id: string
+  order_id: string
+  invoice_number: string
+  pdf_path: string
+  generated_at: string
+}
+
+export interface InvoiceDownload {
+  invoiceNumber: string
+  downloadUrl: string
+}

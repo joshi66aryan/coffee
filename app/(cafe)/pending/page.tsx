@@ -1,5 +1,6 @@
 import { ApprovalWatcher } from '@/components/cafe/approval-watcher'
 import { SignOutButton } from '@/components/sign-out-button'
+import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/cafe/constants'
 
 export const metadata = { title: 'Account Pending — Sherpa Sips' }
 
@@ -17,10 +18,15 @@ export default function PendingPage() {
           Your café account is pending approval. We&apos;ll get back to you within
           24 hours — usually sooner during business hours.
         </p>
-        <div className="bg-white rounded-xl border border-amber-100 p-4 text-sm text-gray-500">
+        <a
+          href={SUPPORT_WHATSAPP_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block bg-white rounded-xl border border-amber-100 p-4 text-sm text-gray-500 hover:border-amber-200 transition-colors"
+        >
           <p>Questions? Reach us on WhatsApp:</p>
-          <p className="font-medium text-gray-700 mt-1">+977 9841-000000</p>
-        </div>
+          <p className="font-medium text-gray-700 mt-1">{SUPPORT_WHATSAPP_DISPLAY}</p>
+        </a>
         <div className="mt-6">
           <SignOutButton />
         </div>

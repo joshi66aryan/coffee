@@ -1,9 +1,13 @@
 'use server'
 
 import { z } from 'zod'
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import logger from '@/lib/logger'
-import type { Product, CafeProductPrice, PaymentType } from '@/lib/types'
+import { generateInvoiceForOrder } from '@/lib/invoice/generate'
+import { INVOICE_SIGNED_URL_TTL_SECONDS } from '@/lib/invoice/storage'
+import { sendPushToAdmins } from '@/lib/push/send'
+import type { Product, CafeProductPrice, PaymentType, InvoiceDownload } from '@/lib/types'
 
 const OrderItemSchema = z.object({
   product_id: z.string().uuid(),
@@ -40,7 +44,7 @@ export async function placeOrder(input: {
 
   const { data: cafe, error: cafeError } = await supabase
     .from('cafes')
-    .select('status, credit_enabled')
+    .select('name, status, credit_enabled')
     .eq('id', user.id)
     .single()
 
@@ -111,6 +115,43 @@ export async function placeOrder(input: {
   }
 
   logger.info('Order placed', { userId: user.id, orderId: order.id, total: total_amount, items: orderItems.length })
+
+  // Invoice generation (PDF render + storage upload) runs after the response
+  // is sent — the confirmation page doesn't need it, and it must never stall
+  // the "place order" click itself. The order detail page already renders
+  // fine before invoice_number is set; the invoice row just appears once
+  // this finishes.
+  after(async () => {
+    try {
+      const result = await generateInvoiceForOrder(order.id)
+      if ('error' in result) {
+        logger.error('Invoice generation failed after order placement', { orderId: order.id, msg: result.error })
+      }
+    } catch (err) {
+      logger.error('Invoice generation threw after order placement', {
+        orderId: order.id,
+        msg: err instanceof Error ? err.message : String(err),
+      })
+    }
+  })
+
+  // Notifying admins runs after the response is sent — a slow or hanging
+  // push service must never stall the "place order" click itself.
+  after(async () => {
+    try {
+      await sendPushToAdmins({
+        title: 'New order received',
+        body: `${cafe.name} placed an order — Rs. ${total_amount.toLocaleString('en-IN')}`,
+        url: `/admin/orders/${order.id}`,
+      })
+    } catch (err) {
+      logger.error('Failed to notify admins of new order', {
+        orderId: order.id,
+        msg: err instanceof Error ? err.message : String(err),
+      })
+    }
+  })
+
   return { orderId: order.id }
 }
 
@@ -140,4 +181,39 @@ export async function getLastOrder(): Promise<{
 
   const cart = items.map(i => `${i.product_id}:${i.quantity}`).join(',')
   return { cart }
+}
+
+export async function getInvoiceDownloadUrl(orderId: string): Promise<InvoiceDownload | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .select('invoice_number, pdf_path')
+    .eq('order_id', orderId)
+    .single<{ invoice_number: string; pdf_path: string }>()
+
+  if (error || !invoice) {
+    // PGRST116 = no matching row — expected when an invoice hasn't been generated yet.
+    if (error && error.code !== 'PGRST116') {
+      logger.error('Failed to fetch invoice', { userId: user.id, orderId, msg: error.message })
+    }
+    return null
+  }
+
+  const { data: signed, error: signError } = await supabase.storage
+    .from('invoices')
+    .createSignedUrl(invoice.pdf_path, INVOICE_SIGNED_URL_TTL_SECONDS)
+
+  if (signError || !signed) {
+    logger.error('Failed to create invoice download URL', {
+      userId: user.id,
+      orderId,
+      msg: signError?.message,
+    })
+    return null
+  }
+
+  return { invoiceNumber: invoice.invoice_number, downloadUrl: signed.signedUrl }
 }

@@ -5,7 +5,7 @@ import { getProducts } from '@/lib/admin/actions'
 import { PAGE_SIZE } from '@/lib/admin/constants'
 import { StockToggle, DeleteProductButton } from '@/components/admin/product-list-actions'
 import { SearchInput } from '@/components/admin/search-input'
-import { Pagination } from '@/components/admin/pagination'
+import { Pagination } from '@/components/ui/pagination'
 import type { Product } from '@/lib/types'
 
 export const metadata = { title: 'Products — Admin' }

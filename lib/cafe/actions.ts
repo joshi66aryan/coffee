@@ -1,6 +1,7 @@
 'use server'
 
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import logger from '@/lib/logger'
 import { NEPAL_PHONE_REGEX } from '@/lib/cafe/phone'
@@ -180,4 +181,66 @@ export async function createCafeProfile(
 
   logger.info('Café profile created', { userId: user.id, name: parsed.data.name })
   return { redirect: '/pending' }
+}
+
+export async function updateCafeProfile(
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const raw = {
+    name:             formData.get('name'),
+    contact_name:     formData.get('contact_name'),
+    neighborhood:     formData.get('neighborhood'),
+    delivery_address: formData.get('delivery_address'),
+  }
+
+  const parsed = onboardingSchema.safeParse(raw)
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated — please log in again.' }
+
+  // Explicit column whitelist — the update-own RLS policy is row-scoped only,
+  // so we must never forward arbitrary fields (e.g. status, credit_enabled) here.
+  const { error } = await supabase
+    .from('cafes')
+    .update({
+      name:             parsed.data.name,
+      contact_name:     parsed.data.contact_name,
+      neighborhood:     parsed.data.neighborhood,
+      delivery_address: parsed.data.delivery_address,
+    })
+    .eq('id', user.id)
+
+  if (error) {
+    logger.error('Failed to update café profile', { userId: user.id, msg: error.message })
+    return { error: 'Failed to save changes. Please try again.' }
+  }
+
+  logger.info('Café profile updated', { userId: user.id })
+  revalidatePath('/settings')
+  return { success: true }
+}
+
+export async function changePassword(
+  newPassword: string,
+): Promise<{ error?: string; success?: boolean }> {
+  const parsed = passwordSchema.safeParse(newPassword)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated — please log in again.' }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data })
+
+  if (error) {
+    logger.error('Failed to change password', { userId: user.id, msg: error.message })
+    return { error: error.message }
+  }
+
+  logger.info('Password changed', { userId: user.id })
+  return { success: true }
 }
