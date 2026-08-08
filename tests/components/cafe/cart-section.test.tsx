@@ -12,16 +12,18 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/cafe/catalog-actions', () => ({
   getCartProducts: vi.fn(),
+  getSubstituteProducts: vi.fn(),
 }))
 
 vi.mock('@/lib/cafe/order-actions', () => ({
   placeOrder: vi.fn(),
 }))
 
-import { getCartProducts } from '@/lib/cafe/catalog-actions'
+import { getCartProducts, getSubstituteProducts } from '@/lib/cafe/catalog-actions'
 import { placeOrder } from '@/lib/cafe/order-actions'
 
 const mockGetCartProducts = vi.mocked(getCartProducts)
+const mockGetSubstituteProducts = vi.mocked(getSubstituteProducts)
 const mockPlaceOrder = vi.mocked(placeOrder)
 
 function makeProduct(overrides: Partial<CatalogProduct> = {}): CatalogProduct {
@@ -43,6 +45,7 @@ function makeProduct(overrides: Partial<CatalogProduct> = {}): CatalogProduct {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  mockGetSubstituteProducts.mockResolvedValue([])
 })
 
 describe('CartSection', () => {
@@ -75,9 +78,71 @@ describe('CartSection', () => {
     await waitFor(() => expect(screen.getByText('Vanilla Syrup')).toBeInTheDocument())
     expect(screen.getByText('Out of Stock')).toBeInTheDocument()
     expect(screen.getByText(/some items are no longer in stock/i)).toBeInTheDocument()
+    // No substitute exists for this item — copy must not promise one.
+    expect(screen.getByText(/remove them to place your order/i)).toBeInTheDocument()
+    expect(screen.queryByText(/swap for a suggested alternative/i)).not.toBeInTheDocument()
 
     const placeButton = screen.getByRole('button', { name: /remove unavailable items to continue/i })
     expect(placeButton).toBeDisabled()
+  })
+
+  it('offers an in-category substitute for an out-of-stock item', async () => {
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 1, 'product-2': 1 }))
+    mockGetCartProducts.mockResolvedValue([
+      makeProduct(),
+      makeProduct({ id: 'product-2', name: 'Vanilla Syrup', category: 'Syrups', stock_status: 'out_of_stock' }),
+    ])
+    mockGetSubstituteProducts.mockResolvedValue([
+      makeProduct({ id: 'product-3', name: 'Caramel Syrup', category: 'Syrups', effective_price: 450 }),
+    ])
+
+    render(<CartSection creditEnabled={false} />)
+
+    await waitFor(() => expect(screen.getByText('Vanilla Syrup')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(mockGetSubstituteProducts).toHaveBeenCalledWith(['Syrups'], ['product-1', 'product-2'])
+    )
+    expect(await screen.findByRole('button', { name: /Caramel Syrup/i })).toBeInTheDocument()
+    expect(screen.getByText(/swap for a suggested alternative/i)).toBeInTheDocument()
+  })
+
+  it('swapping to a substitute removes the out-of-stock item, adds the replacement, and re-enables Place Order', async () => {
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 1, 'product-2': 2 }))
+    mockGetCartProducts.mockResolvedValue([
+      makeProduct(),
+      makeProduct({ id: 'product-2', name: 'Vanilla Syrup', category: 'Syrups', stock_status: 'out_of_stock' }),
+    ])
+    mockGetSubstituteProducts.mockResolvedValue([
+      makeProduct({ id: 'product-3', name: 'Caramel Syrup', category: 'Syrups', effective_price: 450 }),
+    ])
+
+    render(<CartSection creditEnabled={false} />)
+
+    const swapButton = await screen.findByRole('button', { name: /Caramel Syrup/i })
+    await userEvent.click(swapButton)
+
+    await waitFor(() => expect(screen.queryByText('Vanilla Syrup')).not.toBeInTheDocument())
+    expect(screen.getByText('Caramel Syrup')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /place order/i })).not.toBeDisabled()
+    expect(JSON.parse(localStorage.getItem('sherpa-cart') ?? '{}')).toEqual({
+      'product-1': 1,
+      'product-3': 2,
+    })
+  })
+
+  it('does not show a swap strip when no in-category substitute is in stock', async () => {
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 1, 'product-2': 1 }))
+    mockGetCartProducts.mockResolvedValue([
+      makeProduct(),
+      makeProduct({ id: 'product-2', name: 'Vanilla Syrup', category: 'Syrups', stock_status: 'out_of_stock' }),
+    ])
+    mockGetSubstituteProducts.mockResolvedValue([])
+
+    render(<CartSection creditEnabled={false} />)
+
+    await waitFor(() => expect(screen.getByText('Vanilla Syrup')).toBeInTheDocument())
+    expect(screen.queryByText('Swap:')).not.toBeInTheDocument()
+    expect(screen.getByText(/remove them to place your order/i)).toBeInTheDocument()
   })
 
   it('removing the out-of-stock item re-enables Place Order', async () => {
