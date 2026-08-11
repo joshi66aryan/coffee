@@ -8,9 +8,9 @@ const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
 }
 
 const PAYMENT_STATUS_CLASS: Record<PaymentStatus, string> = {
-  paid: 'bg-emerald-100 text-emerald-800',
-  pending: 'bg-amber-100 text-amber-800',
-  due: 'bg-red-100 text-red-800',
+  paid: 'bg-olive-600 text-cream-100',
+  pending: 'bg-brand-400 text-brand-950',
+  due: 'bg-red-600 text-cream-50',
 }
 
 function formatPrice(amount: number) {
@@ -38,74 +38,81 @@ export function OrderDetailCard({
   invoice?: InvoiceDownload | null
 }) {
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-            Items ({items.length})
-          </h2>
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+        <div className="flex items-baseline justify-between gap-3 border-b border-cream-300 bg-cream-100 px-5 py-3.5">
+          <h2 className="display-sm text-brand-900">Items</h2>
+          <span className="eyebrow-sm text-gray-400">{items.length}</span>
         </div>
-        <div className="divide-y divide-gray-100">
+        <ul className="divide-y divide-cream-200">
           {items.map(item => (
-            <div key={item.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
+            <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="truncate font-display text-base leading-none text-brand-900">
+                  {item.name}
+                </p>
+                <p className="mt-2 text-xs text-gray-500">
                   {item.quantity} {item.unit} × {formatPrice(item.unit_price_at_time_of_order)}
                 </p>
               </div>
-              <p className="text-sm font-semibold text-gray-900 shrink-0">
+              <p className="shrink-0 font-display text-base text-brand-900 tabular-nums">
                 {formatPrice(item.quantity * item.unit_price_at_time_of_order)}
               </p>
-            </div>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </section>
 
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-        <div className="px-5 py-3.5 flex justify-between items-center">
-          <span className="text-sm text-gray-500">Payment</span>
-          <span className="text-sm font-medium text-gray-900 capitalize">{order.payment_type}</span>
-        </div>
-        <div className="px-5 py-3.5 flex justify-between items-center">
-          <span className="text-sm text-gray-500">Payment Status</span>
-          <span
-            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${PAYMENT_STATUS_CLASS[order.payment_status]}`}
-          >
-            {PAYMENT_STATUS_LABEL[order.payment_status]}
-          </span>
-        </div>
-        {order.delivery_date && (
-          <div className="px-5 py-3.5 flex justify-between items-center">
-            <span className="text-sm text-gray-500">Delivery</span>
-            <span className="text-sm font-medium text-gray-900">
-              {formatDeliveryDate(order.delivery_date)}
-            </span>
+      <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+        <dl className="divide-y divide-cream-200">
+          <div className="flex items-center justify-between px-5 py-3.5">
+            <dt className="eyebrow-sm text-gray-400">Payment</dt>
+            <dd className="font-display text-base capitalize text-brand-900">{order.payment_type}</dd>
           </div>
-        )}
-        {order.invoice_number && (
-          <div className="px-5 py-3.5 flex justify-between items-center">
-            <span className="text-sm text-gray-500">Invoice</span>
-            {invoice ? (
-              <a
-                href={invoice.downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-mono text-blue-700 hover:text-blue-800"
-              >
-                {order.invoice_number}
-                <Download className="w-3.5 h-3.5" />
-              </a>
-            ) : (
-              <span className="text-sm font-mono text-gray-900">{order.invoice_number}</span>
-            )}
+          <div className="flex items-center justify-between px-5 py-3.5">
+            <dt className="eyebrow-sm text-gray-400">Payment Status</dt>
+            <dd>
+              <span className={`pill ${PAYMENT_STATUS_CLASS[order.payment_status]}`}>
+                {PAYMENT_STATUS_LABEL[order.payment_status]}
+              </span>
+            </dd>
           </div>
-        )}
-        <div className="px-5 py-3.5 flex justify-between items-center">
-          <span className="text-sm font-semibold text-gray-900">Total</span>
-          <span className="text-base font-bold text-gray-900">{formatPrice(order.total_amount)}</span>
-        </div>
-      </div>
+          {order.delivery_date && (
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <dt className="eyebrow-sm text-gray-400">Delivery</dt>
+              <dd className="font-display text-base text-brand-900">
+                {formatDeliveryDate(order.delivery_date)}
+              </dd>
+            </div>
+          )}
+          {order.invoice_number && (
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <dt className="eyebrow-sm text-gray-400">Invoice</dt>
+              <dd>
+                {invoice ? (
+                  <a
+                    href={invoice.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 font-mono text-sm text-brand-700 underline underline-offset-2 hover:text-brand-900"
+                  >
+                    {order.invoice_number}
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <span className="font-mono text-sm text-brand-900">{order.invoice_number}</span>
+                )}
+              </dd>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between bg-cream-100 px-5 py-4">
+            <dt className="eyebrow text-gray-500">Total</dt>
+            <dd className="font-display text-2xl leading-none text-brand-900 tabular-nums">
+              {formatPrice(order.total_amount)}
+            </dd>
+          </div>
+        </dl>
+      </section>
     </div>
   )
 }

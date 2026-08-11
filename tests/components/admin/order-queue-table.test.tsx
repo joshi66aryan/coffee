@@ -31,7 +31,7 @@ function makeOrder(overrides: Partial<AdminOrder> = {}): AdminOrder {
 describe('OrderQueueTable', () => {
   it('shows an empty state when there are no orders', () => {
     render(<OrderQueueTable orders={[]} sort="created_at" dir="desc" basePath="/admin" />)
-    expect(screen.getByText('No orders here.')).toBeInTheDocument()
+    expect(screen.getByText('No orders here')).toBeInTheDocument()
   })
 
   it('renders café name, short order id, status, payment, and total', () => {

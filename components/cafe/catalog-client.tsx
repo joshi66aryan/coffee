@@ -1,48 +1,66 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X, Minus, Plus } from 'lucide-react'
+import { BeanMark } from '@/components/brand/bean-mark'
 import type { Product, CatalogProduct } from '@/lib/types'
 
 export type { CatalogProduct }
 
-const DESC_LIMIT = 55
+const DESC_LIMIT = 60
 
 function formatPrice(amount: number) {
-  return `Rs. ${amount.toLocaleString('en-IN')}`
+  return amount.toLocaleString('en-IN')
+}
+
+const STOCK_STYLES: Record<Product['stock_status'], { label: string; className: string; dot: string }> = {
+  in_stock: {
+    label: 'In Stock',
+    className: 'bg-olive-600 text-cream-100',
+    dot: 'bg-brand-400',
+  },
+  low: {
+    label: 'Low Stock',
+    className: 'bg-brand-400 text-brand-950',
+    dot: 'bg-brand-900',
+  },
+  out_of_stock: {
+    label: 'Out of Stock',
+    className: 'bg-cream-300 text-brand-900',
+    dot: 'bg-brand-700',
+  },
 }
 
 function StockBadge({ status }: { status: Product['stock_status'] }) {
-  if (status === 'in_stock') {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-white/85 backdrop-blur-sm px-1.5 py-0.5 rounded-full shadow-sm">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-        In Stock
-      </span>
-    )
-  }
-  if (status === 'low') {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-white/85 backdrop-blur-sm px-1.5 py-0.5 rounded-full shadow-sm">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-        Low Stock
-      </span>
-    )
-  }
+  const { label, className, dot } = STOCK_STYLES[status]
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-white/85 backdrop-blur-sm px-1.5 py-0.5 rounded-full shadow-sm">
-      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0" />
-      Out of Stock
+    <span className={`pill ${className}`}>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+      {label}
     </span>
   )
 }
 
+/**
+ * Product imagery sits inside the arch. When a product has no photograph the
+ * arch falls back to the brand's bean silhouette rather than an emoji, so an
+ * unphotographed catalog still reads as Sherpa Sips.
+ */
 function ProductImage({ src, alt }: { src: string | null; alt: string }) {
   const [failed, setFailed] = useState(false)
-  if (!src || failed) return <span className="text-4xl select-none">☕</span>
+
+  if (!src || failed) {
+    return <BeanMark className="h-1/2 w-auto text-brand-900/20" />
+  }
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => setFailed(true)} />
+    <img
+      src={src}
+      alt={alt}
+      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+      onError={() => setFailed(true)}
+    />
   )
 }
 
@@ -60,107 +78,146 @@ function ProductCard({
   const hasLongDesc = (product.description?.length ?? 0) > DESC_LIMIT
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-opacity ${!orderable ? 'opacity-50' : ''}`}>
-      {/* Image */}
-      <div className="relative w-full h-44 bg-amber-50 flex items-center justify-center overflow-hidden shrink-0">
-        <ProductImage src={product.image_url} alt={product.name} />
-        <div className="absolute bottom-2 left-2">
+    <article
+      className={`group relative flex flex-col overflow-hidden rounded-t-[4rem] rounded-b-xl border bg-white transition-all duration-300 ${
+        quantity > 0
+          ? 'border-brand-600 shadow-md'
+          : 'border-cream-300 hover:border-brand-400 hover:shadow-md'
+      } ${!orderable ? 'opacity-65' : ''}`}
+    >
+      {/* ---- Arched product area, straight off the pouch artwork -------- */}
+      <div className="relative flex h-40 shrink-0 items-end justify-center overflow-hidden bg-cream-200 sm:h-48">
+        {/* Layered hills behind the product. */}
+        <svg
+          viewBox="0 0 200 80"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-2/5 w-full text-olive-600/15"
+        >
+          <path d="M0 80 L0 46 L44 20 L86 44 L124 14 L162 40 L200 22 L200 80 Z" fill="currentColor" />
+        </svg>
+
+        <div className="absolute inset-0 flex items-center justify-center">
+          <ProductImage src={product.image_url} alt={product.name} />
+        </div>
+
+        <div className="absolute left-2.5 top-2.5">
           <StockBadge status={product.stock_status} />
         </div>
+
         {quantity > 0 && (
-          <div className="absolute top-2 right-2 min-w-5 h-5 bg-amber-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-md">
+          <span className="absolute right-2.5 top-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-900 px-1.5 font-display text-xs leading-none text-cream-50">
             {quantity}
-          </div>
+          </span>
         )}
       </div>
 
-      {/* Info */}
-      <div className="px-2.5 pt-2 pb-2.5 flex flex-col gap-1.5">
-        <p className="font-semibold text-gray-900 text-xs leading-snug line-clamp-2">{product.name}</p>
+      {/* ---- Label ------------------------------------------------------ */}
+      <div className="flex flex-1 flex-col gap-2 px-3.5 pb-3.5 pt-3">
+        <p className="eyebrow-sm text-brand-600">{product.category}</p>
+
+        <h3 className="display-sm line-clamp-2 text-brand-900">{product.name}</h3>
 
         {product.description && (
-          <div className="flex items-baseline gap-1 min-w-0">
-            <p className="text-[10px] text-gray-400 truncate min-w-0 flex-1">{product.description}</p>
+          <p className="line-clamp-2 text-xs leading-relaxed text-gray-500">
+            {product.description}
             {hasLongDesc && (
               <button
-                onClick={e => { e.stopPropagation(); setShowDetails(true) }}
-                className="text-[10px] text-amber-600 font-semibold shrink-0"
+                onClick={(e) => { e.stopPropagation(); setShowDetails(true) }}
+                className="ml-1 font-semibold text-brand-600 underline underline-offset-2 hover:text-brand-900"
               >
-                Read more
+                more
               </button>
             )}
-          </div>
+          </p>
         )}
 
-        <div className="flex items-center justify-between gap-1 mt-auto">
+        {/* Price + stepper sit on a printed rule at the base of the label. */}
+        <div className="mt-auto flex items-end justify-between gap-2 border-t border-cream-300 pt-3">
           <div className="min-w-0">
-            <p className="text-xs font-bold text-amber-900">{formatPrice(product.effective_price)}</p>
-            <p className="text-[10px] text-gray-400">/ {product.unit}</p>
+            <p className="font-display text-xl leading-none text-brand-900">
+              <span className="text-[0.65em] align-baseline text-brand-600">Rs.</span>{' '}
+              {formatPrice(product.effective_price)}
+            </p>
+            <p className="eyebrow-sm mt-1.5 text-gray-400">Per {product.unit}</p>
           </div>
 
           {orderable && (
             quantity > 0 ? (
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex shrink-0 items-center gap-1">
                 <button
                   onClick={() => onSetQty(product.id, quantity - 1)}
-                  className="w-6 h-6 rounded-full bg-gray-100 text-gray-700 font-bold text-base flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all leading-none"
-                  aria-label="Decrease"
+                  className="step-btn"
+                  aria-label={`Decrease ${product.name}`}
                 >
-                  −
+                  <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="w-4 text-center text-xs font-bold text-gray-900 tabular-nums">{quantity}</span>
+                <span className="w-6 text-center font-display text-base tabular-nums text-brand-900">
+                  {quantity}
+                </span>
                 <button
                   onClick={() => onSetQty(product.id, quantity + 1)}
-                  className="w-6 h-6 rounded-full bg-amber-600 text-white font-bold text-base flex items-center justify-center hover:bg-amber-700 active:scale-95 transition-all shadow-sm leading-none"
-                  aria-label="Increase"
+                  className="step-btn step-btn-solid"
+                  aria-label={`Increase ${product.name}`}
                 >
-                  +
+                  <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => onSetQty(product.id, 1)}
-                className="w-7 h-7 rounded-full bg-amber-600 text-white font-bold text-lg flex items-center justify-center hover:bg-amber-700 active:scale-95 transition-all shadow-sm leading-none shrink-0"
-                aria-label="Add"
+                className="btn btn-primary btn-sm shrink-0"
               >
-                +
+                Add
               </button>
             )
           )}
         </div>
       </div>
 
+      {/* ---- Detail sheet ----------------------------------------------- */}
       {showDetails && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4"
+          className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-brand-950/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
           onClick={() => setShowDetails(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={product.name}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden"
-            onClick={e => e.stopPropagation()}
+            className="w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative w-full h-40 bg-amber-50 flex items-center justify-center overflow-hidden">
+            <div className="relative flex h-44 items-center justify-center overflow-hidden bg-cream-200">
               <ProductImage src={product.image_url} alt={product.name} />
               <button
                 onClick={() => setShowDetails(false)}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-gray-600 hover:bg-white shadow-sm"
+                className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-brand-900 text-cream-50 transition-colors hover:bg-brand-950"
                 aria-label="Close"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </button>
+              <div className="absolute bottom-3 left-3">
+                <StockBadge status={product.stock_status} />
+              </div>
             </div>
-            <div className="p-4 space-y-2">
-              <p className="font-semibold text-gray-900 text-sm">{product.name}</p>
-              <p className="text-xs text-gray-500 leading-relaxed">{product.description}</p>
-              <p className="text-sm font-bold text-amber-900">
-                {formatPrice(product.effective_price)}{' '}
-                <span className="text-xs font-normal text-gray-400">/ {product.unit}</span>
-              </p>
+
+            <div className="space-y-3 p-5">
+              <p className="eyebrow">{product.category}</p>
+              <h2 className="display-md text-brand-900">{product.name}</h2>
+              <p className="text-sm leading-relaxed text-gray-600">{product.description}</p>
+              <div className="flex items-baseline justify-between border-t border-cream-300 pt-3">
+                <span className="eyebrow-sm text-gray-400">Per {product.unit}</span>
+                <span className="font-display text-2xl text-brand-900">
+                  <span className="text-[0.6em] text-brand-600">Rs.</span>{' '}
+                  {formatPrice(product.effective_price)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </article>
   )
 }
 
@@ -213,18 +270,23 @@ export function CatalogClient({
 
   return (
     <div className="flex flex-col">
-      {/* Sticky filter bar — stays below the header (h-14 = 56px) */}
-      <div className="sticky top-14 z-10 px-3 pt-2.5 pb-2 bg-white border-b border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2">
+      {/* ---- Filter bar. Sticks under the 64px header. ------------------ */}
+      <div className="sticky top-16 z-10 border-b border-cream-300 bg-cream-100/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
           {categories.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide flex-1 min-w-0">
+            <div
+              className="scrollbar-hide flex min-w-0 flex-1 gap-2 overflow-x-auto"
+              // Fade the trailing edge so a long category list reads as
+              // scrollable instead of looking cut off.
+              style={{
+                WebkitMaskImage: 'linear-gradient(to right, black 88%, transparent 100%)',
+                maskImage: 'linear-gradient(to right, black 88%, transparent 100%)',
+              }}
+            >
               <button
                 onClick={() => setActiveCategory(null)}
-                className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                  !activeCategory
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-amber-300'
-                }`}
+                data-active={!activeCategory}
+                className="chip shrink-0"
               >
                 All
               </button>
@@ -232,11 +294,8 @@ export function CatalogClient({
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
-                  className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all capitalize ${
-                    activeCategory === cat
-                      ? 'bg-amber-600 text-white border-amber-600'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-amber-300'
-                  }`}
+                  data-active={activeCategory === cat}
+                  className="chip shrink-0"
                 >
                   {cat}
                 </button>
@@ -244,47 +303,61 @@ export function CatalogClient({
             </div>
           )}
 
-          <div className={`relative shrink-0 ${categories.length > 1 ? 'w-28 sm:w-44' : 'flex-1'}`}>
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+          <div className={`relative shrink-0 ${categories.length > 1 ? 'w-32 sm:w-56' : 'flex-1'}`}>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Filter…"
-              className="w-full pl-7 pr-6 py-1.5 bg-gray-100 rounded-full text-xs text-gray-900 placeholder-gray-400 outline-none focus:bg-white border border-transparent focus:ring-2 focus:ring-amber-200 focus:border-amber-200 transition-all"
+              placeholder="Search"
+              aria-label="Search products"
+              className="field rounded-full! py-2! pl-8.5! pr-8! text-sm!"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                aria-label="Clear filter"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-900"
+                aria-label="Clear search"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Grid */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center px-8">
-          <Search className="w-10 h-10 text-gray-300 mb-3" />
-          <p className="font-semibold text-gray-600">No products found</p>
-          <p className="text-sm text-gray-400 mt-1">Try a different search or category.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 items-start">
-          {filtered.map(product => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              quantity={quantities[product.id] ?? 0}
-              onSetQty={setQty}
-            />
-          ))}
-        </div>
-      )}
+      {/* ---- Grid -------------------------------------------------------- */}
+      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center px-8 py-24 text-center">
+            <Search className="mb-4 h-8 w-8 text-cream-400" />
+            <p className="display-md text-brand-900">Nothing on this trail</p>
+            <p className="mt-2 text-sm text-gray-500">Try a different search or category.</p>
+          </div>
+        ) : (
+          <>
+            <div className="mb-5 flex items-baseline justify-between gap-4">
+              <h2 className="display-md text-brand-900">
+                {activeCategory ?? 'The Collection'}
+              </h2>
+              <span className="eyebrow-sm shrink-0 text-gray-400">
+                {filtered.length} {filtered.length === 1 ? 'Product' : 'Products'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  quantity={quantities[product.id] ?? 0}
+                  onSetQty={setQty}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

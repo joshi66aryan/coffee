@@ -69,19 +69,25 @@ export default async function OrderDetailPage({
   const invoice = await getInvoiceDownloadUrl(id)
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20 sm:pb-4">
+    <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
       <RealtimeRefresh table="orders" filter={`id=eq.${id}`} />
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-4 flex items-center gap-3">
+
+      <header className="sticky top-0 z-20 flex items-center gap-3 bg-brand-900 px-4 py-3.5 text-cream-200 sm:px-6">
         <Link
           href="/orders"
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500"
+          aria-label="Back to cart"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-cream-200/70 transition-colors hover:bg-cream-50/10 hover:text-cream-50"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-base font-bold text-gray-900">Order Details</h1>
+        <h1 className="font-display text-lg uppercase leading-none tracking-[0.1em] text-cream-50">
+          Order Details
+        </h1>
       </header>
 
-      <OrderDetailView order={orderResult.data} items={items} invoice={invoice} />
+      <div className="pt-6">
+        <OrderDetailView order={orderResult.data} items={items} invoice={invoice} />
+      </div>
     </main>
   )
 }

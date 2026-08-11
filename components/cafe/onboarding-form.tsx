@@ -27,8 +27,8 @@ export function OnboardingForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-          Café Name <span className="text-red-500">*</span>
+        <label htmlFor="name" className="field-label">
+          Café Name <span className="text-red-600">*</span>
         </label>
         <input
           id="name"
@@ -36,13 +36,13 @@ export function OnboardingForm() {
           type="text"
           required
           placeholder="e.g. Himalayan Brew"
-          className="block w-full px-3 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+          className="field"
         />
       </div>
 
       <div>
-        <label htmlFor="contact_name" className="block text-sm font-medium text-gray-700 mb-1">
-          Your Name <span className="text-red-500">*</span>
+        <label htmlFor="contact_name" className="field-label">
+          Your Name <span className="text-red-600">*</span>
         </label>
         <input
           id="contact_name"
@@ -50,13 +50,32 @@ export function OnboardingForm() {
           type="text"
           required
           placeholder="e.g. Ramesh Shrestha"
-          className="block w-full px-3 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+          className="field"
         />
       </div>
 
       <div>
-        <label htmlFor="neighborhood" className="block text-sm font-medium text-gray-700 mb-1">
-          Neighborhood <span className="text-red-500">*</span>
+        <label htmlFor="phone" className="field-label">
+          Phone Number <span className="text-red-600">*</span>
+        </label>
+        <div className="flex">
+          <span className="inline-flex select-none items-center rounded-l-lg border border-r-0 border-cream-300 bg-cream-100 px-3.5 font-display text-sm tracking-[0.08em] text-gray-500">
+            +977
+          </span>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            required
+            placeholder="98XXXXXXXX"
+            className="field flex-1 rounded-l-none"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="neighborhood" className="field-label">
+          Neighborhood <span className="text-red-600">*</span>
         </label>
         <input
           id="neighborhood"
@@ -64,13 +83,13 @@ export function OnboardingForm() {
           type="text"
           required
           placeholder="e.g. Thamel, Patan, Baneshwor"
-          className="block w-full px-3 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+          className="field"
         />
       </div>
 
       <div>
-        <label htmlFor="delivery_address" className="block text-sm font-medium text-gray-700 mb-1">
-          Delivery Address <span className="text-red-500">*</span>
+        <label htmlFor="delivery_address" className="field-label">
+          Delivery Address <span className="text-red-600">*</span>
         </label>
         <textarea
           id="delivery_address"
@@ -78,16 +97,18 @@ export function OnboardingForm() {
           required
           rows={3}
           placeholder="Full address where supplies should be delivered…"
-          className="block w-full px-3 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+          className="field resize-none"
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="border-l-2 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+      )}
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="btn btn-primary btn-block btn-lg"
       >
         {isPending ? 'Submitting…' : 'Submit Application'}
       </button>

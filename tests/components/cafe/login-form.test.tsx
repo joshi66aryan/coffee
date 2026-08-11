@@ -11,124 +11,173 @@ vi.mock('next/navigation', () => ({
 
 // Mock server actions — these run server-side and can't run in jsdom
 vi.mock('@/lib/cafe/actions', () => ({
-  sendOtp:   vi.fn(),
-  verifyOtp: vi.fn(),
+  signInWithEmail: vi.fn(),
+  signUpWithEmail: vi.fn(),
 }))
 
-import { sendOtp, verifyOtp } from '@/lib/cafe/actions'
+const mockSignInWithOAuth = vi.fn()
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({ auth: { signInWithOAuth: mockSignInWithOAuth } }),
+}))
 
-const mockSendOtp   = vi.mocked(sendOtp)
-const mockVerifyOtp = vi.mocked(verifyOtp)
+import { signInWithEmail, signUpWithEmail } from '@/lib/cafe/actions'
+
+const mockSignIn = vi.mocked(signInWithEmail)
+const mockSignUp = vi.mocked(signUpWithEmail)
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('LoginForm — phone step', () => {
-  it('renders the phone input and Send Code button', () => {
+describe('LoginForm — Google sign-in', () => {
+  it('renders a Continue with Google button', () => {
     render(<LoginForm />)
-    expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /send code/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument()
   })
 
-  it('shows the +977 prefix', () => {
-    render(<LoginForm />)
-    expect(screen.getByText('+977')).toBeInTheDocument()
-  })
-
-  it('disables Send Code while the phone field is empty', () => {
-    render(<LoginForm />)
-    expect(screen.getByRole('button', { name: /send code/i })).toBeDisabled()
-  })
-
-  it('calls sendOtp with formatted phone on submit', async () => {
-    mockSendOtp.mockResolvedValue({})
+  it('starts Google OAuth with a redirect back to /auth/callback', async () => {
+    mockSignInWithOAuth.mockResolvedValue({ error: null })
     render(<LoginForm />)
 
-    await userEvent.type(screen.getByLabelText(/phone number/i), '9841234567')
-    await userEvent.click(screen.getByRole('button', { name: /send code/i }))
+    await userEvent.click(screen.getByRole('button', { name: /continue with google/i }))
 
     await waitFor(() => {
-      expect(mockSendOtp).toHaveBeenCalledWith('+9779841234567')
+      expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: { redirectTo: expect.stringContaining('/auth/callback') },
+      })
     })
   })
 
-  it('shows an error message when sendOtp fails', async () => {
-    mockSendOtp.mockResolvedValue({ error: 'Phone number is invalid' })
+  it('shows an error message when Google sign-in fails to start', async () => {
+    mockSignInWithOAuth.mockResolvedValue({ error: { message: 'oauth error' } })
     render(<LoginForm />)
 
-    await userEvent.type(screen.getByLabelText(/phone number/i), '1234')
-    await userEvent.click(screen.getByRole('button', { name: /send code/i }))
+    await userEvent.click(screen.getByRole('button', { name: /continue with google/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('Phone number is invalid')).toBeInTheDocument()
-    })
-  })
-
-  it('advances to OTP step after successful send', async () => {
-    mockSendOtp.mockResolvedValue({})
-    render(<LoginForm />)
-
-    await userEvent.type(screen.getByLabelText(/phone number/i), '9841234567')
-    await userEvent.click(screen.getByRole('button', { name: /send code/i }))
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument()
+      expect(screen.getByText(/could not start google sign-in/i)).toBeInTheDocument()
     })
   })
 })
 
-describe('LoginForm — OTP step', () => {
-  async function renderOtpStep() {
-    mockSendOtp.mockResolvedValue({})
+describe('LoginForm — email sign-in', () => {
+  it('renders email and password fields with no phone input', () => {
     render(<LoginForm />)
-    await userEvent.type(screen.getByLabelText(/phone number/i), '9841234567')
-    await userEvent.click(screen.getByRole('button', { name: /send code/i }))
-    await waitFor(() => screen.getByLabelText(/verification code/i))
-  }
-
-  it('shows the number the code was sent to', async () => {
-    await renderOtpStep()
-    expect(screen.getByText(/\+9779841234567/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/phone number/i)).not.toBeInTheDocument()
   })
 
-  it('disables Verify Code until 6 digits are entered', async () => {
-    await renderOtpStep()
-    expect(screen.getByRole('button', { name: /verify code/i })).toBeDisabled()
-    await userEvent.type(screen.getByLabelText(/verification code/i), '12345')
-    expect(screen.getByRole('button', { name: /verify code/i })).toBeDisabled()
-    await userEvent.type(screen.getByLabelText(/verification code/i), '6')
-    expect(screen.getByRole('button', { name: /verify code/i })).not.toBeDisabled()
+  it('disables Sign in until both fields are filled', () => {
+    render(<LoginForm />)
+    expect(screen.getByRole('button', { name: /^sign in$/i })).toBeDisabled()
   })
 
-  it('calls verifyOtp and navigates on success', async () => {
-    mockVerifyOtp.mockResolvedValue({ redirect: '/' })
-    await renderOtpStep()
+  it('calls signInWithEmail and navigates on success', async () => {
+    mockSignIn.mockResolvedValue({ redirect: '/' })
+    render(<LoginForm />)
 
-    await userEvent.type(screen.getByLabelText(/verification code/i), '123456')
-    await userEvent.click(screen.getByRole('button', { name: /verify code/i }))
+    await userEvent.type(screen.getByLabelText(/email/i), 'cafe@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'password123')
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }))
 
     await waitFor(() => {
-      expect(mockVerifyOtp).toHaveBeenCalledWith('+9779841234567', '123456')
+      expect(mockSignIn).toHaveBeenCalledWith('cafe@example.com', 'password123')
       expect(mockPush).toHaveBeenCalledWith('/')
     })
   })
 
-  it('shows error when OTP verification fails', async () => {
-    mockVerifyOtp.mockResolvedValue({ error: 'Invalid or expired code — please try again.' })
-    await renderOtpStep()
+  it('shows an error message when sign-in fails', async () => {
+    mockSignIn.mockResolvedValue({ error: 'Invalid email or password.' })
+    render(<LoginForm />)
 
-    await userEvent.type(screen.getByLabelText(/verification code/i), '000000')
-    await userEvent.click(screen.getByRole('button', { name: /verify code/i }))
+    await userEvent.type(screen.getByLabelText(/email/i), 'cafe@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'wrongpassword')
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/invalid or expired code/i)).toBeInTheDocument()
+      expect(screen.getByText('Invalid email or password.')).toBeInTheDocument()
     })
   })
 
-  it('allows going back to the phone step', async () => {
-    await renderOtpStep()
-    await userEvent.click(screen.getByRole('button', { name: /use a different number/i }))
-    expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument()
+  it('switches to sign-up mode via the toggle phrase and calls signUpWithEmail', async () => {
+    mockSignUp.mockResolvedValue({ confirm: true })
+    render(<LoginForm />)
+
+    await userEvent.click(screen.getByRole('button', { name: /don't have an account\? sign up/i }))
+    expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /already have an account\? sign in/i })).toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'new@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'password123')
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }))
+
+    await waitFor(() => {
+      expect(mockSignUp).toHaveBeenCalledWith('new@example.com', 'password123')
+      expect(screen.getByText(/check your inbox/i)).toBeInTheDocument()
+    })
+  })
+
+  it('only shows the terms checkbox in sign-up mode, and requires it before creating an account', async () => {
+    render(<LoginForm />)
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /don't have an account\? sign up/i }))
+    const checkbox = screen.getByRole('checkbox')
+    expect(checkbox).not.toBeChecked()
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'new@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'password123')
+    expect(screen.getByRole('button', { name: /create account/i })).toBeDisabled()
+
+    await userEvent.click(checkbox)
+    expect(checkbox).toBeChecked()
+    expect(screen.getByRole('button', { name: /create account/i })).not.toBeDisabled()
+  })
+
+  it('links the terms checkbox label to the /terms page', async () => {
+    render(<LoginForm />)
+    await userEvent.click(screen.getByRole('button', { name: /don't have an account\? sign up/i }))
+
+    expect(screen.getByRole('link', { name: /terms & conditions/i })).toHaveAttribute('href', '/terms')
+  })
+
+  it('does not show password strength feedback until typing starts', async () => {
+    render(<LoginForm />)
+    await userEvent.click(screen.getByRole('button', { name: /don't have an account\? sign up/i }))
+    expect(screen.queryByText(/uppercase letter/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^(too weak|weak|fair|good|strong)$/i)).not.toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText('Password'), 'a')
+    expect(screen.getByText(/uppercase letter/i)).toBeInTheDocument()
+  })
+
+  it('updates the live strength feedback as the password is typed', async () => {
+    render(<LoginForm />)
+    await userEvent.click(screen.getByRole('button', { name: /don't have an account\? sign up/i }))
+
+    await userEvent.type(screen.getByLabelText('Password'), 'abc')
+    expect(screen.getByText(/too weak/i)).toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText('Password'), '123XYZ!!!!')
+    expect(screen.getByText(/strong/i)).toBeInTheDocument()
+  })
+
+  it('rejects a weak password on sign-up with a server error', async () => {
+    mockSignUp.mockResolvedValue({ error: 'Password must include an uppercase letter, a number, and a special character' })
+    render(<LoginForm />)
+
+    await userEvent.click(screen.getByRole('button', { name: /don't have an account\? sign up/i }))
+    await userEvent.type(screen.getByLabelText(/email/i), 'new@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'lowercaseonly')
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/password must include an uppercase letter/i)).toBeInTheDocument()
+    })
+    expect(mockPush).not.toHaveBeenCalled()
   })
 })

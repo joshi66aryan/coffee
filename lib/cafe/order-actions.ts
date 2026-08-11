@@ -44,12 +44,15 @@ export async function placeOrder(input: {
 
   const { data: cafe, error: cafeError } = await supabase
     .from('cafes')
-    .select('name, status, credit_enabled')
+    .select('name, status, credit_enabled, phone, delivery_address')
     .eq('id', user.id)
     .single()
 
   if (cafeError || !cafe) return { error: 'Café profile not found' }
   if (cafe.status !== 'active') return { error: 'Your account is not active' }
+  if (!cafe.phone.trim() || !cafe.delivery_address.trim()) {
+    return { error: 'Please add your phone number and delivery address in Account Settings before placing an order.' }
+  }
   if (parsed.data.payment_type === 'credit' && !cafe.credit_enabled) {
     return { error: 'Credit is not available for your account yet' }
   }
@@ -153,34 +156,6 @@ export async function placeOrder(input: {
   })
 
   return { orderId: order.id }
-}
-
-export async function getLastOrder(): Promise<{
-  cart: string
-} | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: lastOrder } = await supabase
-    .from('orders')
-    .select('id')
-    .eq('cafe_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
-
-  if (!lastOrder) return null
-
-  const { data: items } = await supabase
-    .from('order_items')
-    .select('product_id, quantity')
-    .eq('order_id', lastOrder.id)
-
-  if (!items || items.length === 0) return null
-
-  const cart = items.map(i => `${i.product_id}:${i.quantity}`).join(',')
-  return { cart }
 }
 
 export async function getInvoiceDownloadUrl(orderId: string): Promise<InvoiceDownload | null> {

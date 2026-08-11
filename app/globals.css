@@ -1,19 +1,752 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ==========================================================================
+   SHERPA SIPS — DESIGN SYSTEM
+   Source of truth: "Sherpa Sips Coffee" brand guidelines (Hawkeyes Design).
+
+   Palette (verbatim from the brand document):
+     #5C2D11  Dark Coffee Brown   — typography, nav, primary CTA
+     #DDA25E  Golden / Warm Tan   — highlights, secondary CTA
+     #A96331  Warm Terracotta     — accents, product emphasis
+     #E2DDC8  Cream / Off-White   — dominant background
+     #3C3B1F  Deep Olive Green    — mountain / earth / natural sections
+
+   Typography: Bebas Neue (display, closest libre match to Bebas Neue Pro)
+   for headings + numerals; Barlow for body copy.
+   ========================================================================== */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-barlow);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bebas-neue);
+}
+
+@theme {
+  /* ---- Brand: coffee brown → golden ramp ------------------------------- */
+  --color-brand-50: #f7efe2;
+  --color-brand-100: #f0e2cc;
+  --color-brand-200: #e8c9a2;
+  --color-brand-300: #e3b67f;
+  --color-brand-400: #dda25e; /* Golden / Warm Tan */
+  --color-brand-500: #c58248;
+  --color-brand-600: #a96331; /* Warm Terracotta */
+  --color-brand-700: #8a4d24;
+  --color-brand-800: #713a19;
+  --color-brand-900: #5c2d11; /* Dark Coffee Brown */
+  --color-brand-950: #3a1c0a;
+
+  /* ---- Olive: the "earth / mountain" family ---------------------------- */
+  --color-olive-50: #f2f2ea;
+  --color-olive-100: #e5e5d7;
+  --color-olive-200: #c9c8b0;
+  --color-olive-300: #a5a483;
+  --color-olive-400: #7d7c53;
+  --color-olive-500: #56552f;
+  --color-olive-600: #3c3b1f; /* Deep Olive Green */
+  --color-olive-700: #33321a;
+  --color-olive-800: #2a2916;
+  --color-olive-900: #1f1e10;
+  --color-olive-950: #14140a;
+
+  /* ---- Cream: the paper the whole product is printed on ---------------- */
+  --color-cream-50: #fdfbf5;
+  --color-cream-100: #f7f2e6;
+  --color-cream-200: #e2ddc8; /* Cream / Off-White */
+  --color-cream-300: #d3cbaf;
+  --color-cream-400: #bdb28e;
+
+  /* ---- Neutrals are REDEFINED as warm coffee-tinted values -------------
+     Tailwind's stock neutrals are cold blue-greys. Re-pointing the ramp
+     keeps the whole product inside the brand palette without every legacy
+     `text-gray-500` needing a hand edit, and guarantees no stark #fff or
+     #000 can surface anywhere in the UI. ---------------------------------- */
+  --color-white: #fdfbf5; /* warm paper, never stark white */
+  --color-black: #241606;
+
+  --color-gray-50: #f7f2e6;
+  --color-gray-100: #ebe3d0;
+  --color-gray-200: #ded3b8;
+  --color-gray-300: #b6a484;
+  --color-gray-400: #8f7c5d;
+  --color-gray-500: #75613f;
+  --color-gray-600: #5e4830;
+  --color-gray-700: #503a26;
+  --color-gray-800: #3c3b1f;
+  --color-gray-900: #3a2314;
+  --color-gray-950: #241606;
+
+  --color-slate-50: #f7f2e6;
+  --color-slate-100: #ebe3d0;
+  --color-slate-200: #ded3b8;
+  --color-slate-300: #b6a484;
+  --color-slate-400: #8f7c5d;
+  --color-slate-500: #75613f;
+  --color-slate-600: #5e4830;
+  --color-slate-700: #503a26;
+  --color-slate-800: #3c3b1f;
+  --color-slate-900: #3a2314;
+
+  --color-zinc-50: #f7f2e6;
+  --color-zinc-100: #ebe3d0;
+  --color-zinc-200: #ded3b8;
+  --color-zinc-300: #b6a484;
+  --color-zinc-400: #8f7c5d;
+  --color-zinc-500: #75613f;
+  --color-zinc-600: #5e4830;
+  --color-zinc-700: #503a26;
+  --color-zinc-800: #3c3b1f;
+  --color-zinc-900: #3a2314;
+
+  --color-neutral-50: #f7f2e6;
+  --color-neutral-100: #ebe3d0;
+  --color-neutral-200: #ded3b8;
+  --color-neutral-300: #b6a484;
+  --color-neutral-400: #8f7c5d;
+  --color-neutral-500: #75613f;
+  --color-neutral-600: #5e4830;
+  --color-neutral-700: #503a26;
+  --color-neutral-800: #3c3b1f;
+  --color-neutral-900: #3a2314;
+
+  --color-stone-50: #f7f2e6;
+  --color-stone-100: #ebe3d0;
+  --color-stone-200: #ded3b8;
+  --color-stone-300: #b6a484;
+  --color-stone-400: #8f7c5d;
+  --color-stone-500: #75613f;
+  --color-stone-600: #5e4830;
+  --color-stone-700: #503a26;
+  --color-stone-800: #3c3b1f;
+  --color-stone-900: #3a2314;
+
+  /* ---- Semantic status colours, pulled toward the brand ----------------
+     Danger reads as fired brick rather than fire-engine red; success reads
+     as the brand's olive rather than a generic SaaS emerald. --------------- */
+  --color-red-50: #f9ece6;
+  --color-red-100: #f2d9cd;
+  --color-red-200: #e5b8a4;
+  --color-red-300: #d4917a;
+  --color-red-400: #c26a52;
+  --color-red-500: #b04a2c;
+  --color-red-600: #983b21;
+  --color-red-700: #7d2f1a;
+  --color-red-800: #632415;
+  --color-red-900: #4a1a10;
+  --color-rose-50: #f9ece6;
+  --color-rose-100: #f2d9cd;
+  --color-rose-500: #b04a2c;
+  --color-rose-600: #983b21;
+  --color-rose-700: #7d2f1a;
+
+  --color-emerald-50: #f0f2e5;
+  --color-emerald-100: #e0e4c9;
+  --color-emerald-200: #c6cda2;
+  --color-emerald-300: #a8b177;
+  --color-emerald-400: #8a9553;
+  --color-emerald-500: #6e7a3c;
+  --color-emerald-600: #58622f;
+  --color-emerald-700: #464e26;
+  --color-emerald-800: #3c3b1f;
+  --color-emerald-900: #2a2916;
+  --color-green-50: #f0f2e5;
+  --color-green-100: #e0e4c9;
+  --color-green-200: #c6cda2;
+  --color-green-500: #6e7a3c;
+  --color-green-600: #58622f;
+  --color-green-700: #464e26;
+  --color-green-800: #3c3b1f;
+  --color-green-900: #2a2916;
+  --color-teal-100: #e0e4c9;
+  --color-teal-600: #58622f;
+
+  --color-amber-50: #f7efe2;
+  --color-amber-100: #f0e2cc;
+  --color-amber-200: #e8c9a2;
+  --color-amber-400: #dda25e;
+  --color-amber-500: #c58248;
+  --color-amber-600: #a96331;
+  --color-amber-700: #8a4d24;
+  --color-amber-800: #713a19;
+  --color-yellow-50: #f7efe2;
+  --color-yellow-100: #f0e2cc;
+  --color-yellow-200: #e8c9a2;
+  --color-yellow-400: #dda25e;
+  --color-yellow-500: #c58248;
+  --color-yellow-600: #a96331;
+  --color-yellow-700: #8a4d24;
+  --color-yellow-800: #713a19;
+  --color-orange-100: #f0e2cc;
+  --color-orange-500: #c58248;
+  --color-orange-600: #a96331;
+  --color-orange-800: #713a19;
+
+  /* Blues/purples have no place in this identity — fold them into the
+     terracotta + olive families so a stray legacy class stays on-brand. */
+  --color-blue-50: #f7efe2;
+  --color-blue-100: #f0e2cc;
+  --color-blue-200: #e8c9a2;
+  --color-blue-500: #a96331;
+  --color-blue-600: #8a4d24;
+  --color-blue-700: #713a19;
+  --color-blue-800: #5c2d11;
+  --color-blue-900: #3a1c0a;
+  --color-indigo-100: #f0e2cc;
+  --color-indigo-600: #8a4d24;
+  --color-indigo-700: #713a19;
+  --color-purple-50: #f0f2e5;
+  --color-purple-100: #e0e4c9;
+  --color-purple-200: #c6cda2;
+  --color-purple-600: #58622f;
+  --color-purple-700: #464e26;
+  --color-purple-800: #3c3b1f;
+  --color-violet-100: #e0e4c9;
+  --color-violet-700: #464e26;
+  --color-sky-100: #f0e2cc;
+  --color-sky-600: #a96331;
+  --color-cyan-100: #e0e4c9;
+  --color-cyan-600: #58622f;
+  --color-pink-100: #f2d9cd;
+  --color-pink-600: #983b21;
+
+  /* ---- Shadows: ink-tinted and restrained. No SaaS drop-shadow haze. --- */
+  --shadow-2xs: 0 1px 1px rgb(60 59 31 / 0.04);
+  --shadow-xs: 0 1px 2px rgb(60 59 31 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(60 59 31 / 0.06), 0 1px 1px rgb(92 45 17 / 0.03);
+  --shadow-md: 0 2px 6px rgb(60 59 31 / 0.07), 0 1px 2px rgb(92 45 17 / 0.04);
+  --shadow-lg: 0 6px 18px rgb(60 59 31 / 0.09), 0 2px 4px rgb(92 45 17 / 0.04);
+  --shadow-xl: 0 14px 36px rgb(60 59 31 / 0.13), 0 3px 8px rgb(92 45 17 / 0.05);
+  --shadow-2xl: 0 28px 60px rgb(36 22 6 / 0.22);
+
+  /* ---- Motion ---------------------------------------------------------- */
+  --ease-brand: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --animate-rise: rise 0.5s var(--ease-brand) both;
+  --animate-fade-in: fade-in 0.35s var(--ease-brand) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+
+:root {
+  --background: #f7f2e6;
+  --foreground: #3a2314;
+
+  /* Semantic aliases used by the component layer below. */
+  --ink: #5c2d11;
+  --ink-deep: #3a2314;
+  --ink-muted: #75613f;
+  --paper: #fdfbf5;
+  --paper-sunk: #f7f2e6;
+  --cream: #e2ddc8;
+  --gold: #dda25e;
+  --terracotta: #a96331;
+  --olive: #3c3b1f;
+  --line: #e0d7c0;
+  --line-strong: #cdc0a1;
+}
+
+* {
+  border-color: var(--line);
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv02", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: var(--gold);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--terracotta);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Bebas has no lowercase; anything wearing it is uppercase by definition. */
+.font-display {
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+}
+
+/* ==========================================================================
+   COMPONENT LAYER
+   Editorial primitives shared across the café + admin surfaces.
+   ========================================================================== */
+
+@layer components {
+  /* ---- Type scale ------------------------------------------------------ */
+
+  /* Hero / packaging-scale statement. */
+  .display-xl {
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    font-size: clamp(2.75rem, 11vw, 6rem);
+    line-height: 0.88;
+    letter-spacing: 0.005em;
+  }
+
+  .display-lg {
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    font-size: clamp(2rem, 6vw, 3.25rem);
+    line-height: 0.92;
+    letter-spacing: 0.01em;
+  }
+
+  /* Section title. */
+  .display-md {
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    font-size: clamp(1.5rem, 3.4vw, 2rem);
+    line-height: 0.98;
+    letter-spacing: 0.015em;
+  }
+
+  .display-sm {
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    font-size: 1.25rem;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+
+  /* Big statistics — the brand doc leans on oversized condensed numerals. */
+  .display-stat {
+    font-family: var(--font-bebas-neue), sans-serif;
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    line-height: 0.9;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Small uppercase label — the connective tissue of the whole system. */
+  .eyebrow {
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    line-height: 1;
+    letter-spacing: 0.18em;
+    color: var(--terracotta);
+  }
+
+  .eyebrow-sm {
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0.2em;
+  }
+
+  /* Tagline lockup, per the brand guide's wordmark treatment. */
+  .tagline {
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.625rem;
+    line-height: 1;
+  }
+
+  /* ---- Rules & dividers ------------------------------------------------ */
+
+  /* A hairline that reads as printed ink rather than a UI border. */
+  .rule {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      var(--line-strong),
+      var(--line-strong) 65%,
+      transparent
+    );
+  }
+
+  /* ---- Surfaces -------------------------------------------------------- */
+
+  /* Base card: printed label, not a floating SaaS panel. */
+  .card {
+    background-color: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+  }
+
+  /* Packaging card — the arched top echoes the coffee pouch artwork. */
+  .card-arch {
+    background-color: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 5rem 5rem 0.75rem 0.75rem;
+    overflow: hidden;
+  }
+
+  /* Dark "mountain" panel. */
+  .panel-olive {
+    background-color: var(--olive);
+    color: var(--cream);
+    border-radius: 0.75rem;
+  }
+
+  /* Dark "roast" panel. */
+  .panel-coffee {
+    background-color: var(--ink);
+    color: var(--cream);
+    border-radius: 0.75rem;
+  }
+
+  /* ---- Buttons ---------------------------------------------------------
+     Tactile and squared-off. Deliberately not pill-shaped. --------------- */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.875rem 1.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.18s var(--ease-brand),
+      color 0.18s var(--ease-brand),
+      border-color 0.18s var(--ease-brand),
+      transform 0.12s var(--ease-brand);
+    cursor: pointer;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .btn-sm {
+    padding: 0.5rem 0.8125rem;
+    font-size: 0.8125rem;
+    letter-spacing: 0.1em;
+    border-radius: 0.375rem;
+  }
+
+  .btn-lg {
+    padding: 1.0625rem 1.5rem;
+    font-size: 1.1875rem;
+  }
+
+  .btn-block {
+    display: flex;
+    width: 100%;
+  }
+
+  /* Primary — dark coffee brown on cream text. */
+  .btn-primary {
+    background-color: var(--ink);
+    color: var(--paper);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: #4a2309;
+  }
+  .btn-primary:disabled {
+    background-color: var(--line-strong);
+    color: #8f7c5d;
+    opacity: 1;
+  }
+
+  /* Secondary — golden with dark coffee text. */
+  .btn-secondary {
+    background-color: var(--gold);
+    color: var(--ink);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: #d1913f;
+  }
+
+  /* Accent — terracotta with cream text. */
+  .btn-accent {
+    background-color: var(--terracotta);
+    color: var(--paper);
+  }
+  .btn-accent:hover:not(:disabled) {
+    background-color: #94552a;
+  }
+
+  /* Outline — the quiet option. */
+  .btn-outline {
+    background-color: transparent;
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+  .btn-outline:hover:not(:disabled) {
+    border-color: var(--ink);
+    background-color: rgb(226 221 200 / 0.45);
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--ink-muted);
+    padding: 0.5rem 0.75rem;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--ink);
+    background-color: rgb(226 221 200 / 0.5);
+  }
+
+  .btn-danger {
+    background-color: #983b21;
+    color: var(--paper);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background-color: #7d2f1a;
+  }
+
+  /* ---- Form fields ----------------------------------------------------- */
+
+  .field-label {
+    display: block;
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.75rem;
+    line-height: 1;
+    color: var(--ink-muted);
+    margin-bottom: 0.4375rem;
+  }
+
+  /* Underline-forward input — editorial, not a rounded SaaS box. */
+  .field {
+    width: 100%;
+    background-color: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: 0.5rem;
+    padding: 0.6875rem 0.875rem;
+    font-size: 0.9375rem;
+    color: var(--ink-deep);
+    transition:
+      border-color 0.18s var(--ease-brand),
+      box-shadow 0.18s var(--ease-brand);
+  }
+
+  .field::placeholder {
+    color: #a8946f;
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--terracotta);
+    box-shadow: 0 0 0 3px rgb(169 99 49 / 0.14);
+  }
+
+  .field:disabled {
+    background-color: var(--paper-sunk);
+    color: var(--ink-muted);
+  }
+
+  /* ---- Pills / badges -------------------------------------------------- */
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.6875rem;
+    line-height: 1;
+    padding: 0.375rem 0.625rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  /* Filter chip. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    font-size: 0.8125rem;
+    line-height: 1;
+    padding: 0.5rem 0.8125rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-muted);
+    /* Opaque by default so callers never need a `bg-*` utility here. A
+       utility would sit in a later cascade layer than this component and
+       silently beat the selected state's background, leaving cream label
+       text on a white chip. */
+    background-color: var(--paper);
+    transition: all 0.18s var(--ease-brand);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .chip:hover {
+    border-color: var(--terracotta);
+    color: var(--ink);
+  }
+  .chip[data-active="true"] {
+    background-color: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+
+  /* ---- Data tables ----------------------------------------------------- */
+
+  .table-brand {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table-brand thead th {
+    font-family: var(--font-bebas-neue), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.6875rem;
+    color: var(--ink-muted);
+    text-align: left;
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid var(--line-strong);
+    background-color: var(--paper-sunk);
+    white-space: nowrap;
+  }
+
+  .table-brand tbody td {
+    padding: 0.8125rem 1rem;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-deep);
+  }
+
+  .table-brand tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .table-brand tbody tr {
+    transition: background-color 0.15s var(--ease-brand);
+  }
+
+  .table-brand tbody tr:hover {
+    background-color: rgb(226 221 200 / 0.35);
+  }
+
+  /* ---- Quantity stepper ------------------------------------------------ */
+
+  .step-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    background-color: var(--paper);
+    font-size: 1rem;
+    line-height: 1;
+    font-weight: 600;
+    transition: all 0.15s var(--ease-brand);
+    cursor: pointer;
+  }
+  .step-btn:hover:not(:disabled) {
+    border-color: var(--ink);
+    background-color: var(--cream);
+  }
+  .step-btn:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+
+  .step-btn-solid {
+    background-color: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+  .step-btn-solid:hover:not(:disabled) {
+    background-color: #4a2309;
+    border-color: #4a2309;
+  }
+}
+
+/* ==========================================================================
+   UTILITIES
+   ========================================================================== */
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Arched container — the pouch/label silhouette from the packaging. */
+@utility arch {
+  border-radius: 999px 999px 0.5rem 0.5rem;
+}
+
+@utility arch-sm {
+  border-radius: 3rem 3rem 0.5rem 0.5rem;
+}
+
+/* Sherpa-trail curve used as a section separator. */
+@utility trail-top {
+  border-radius: 2.5rem 2.5rem 0 0;
+}
+
+/* Very soft warmth wash for large flat cream areas — two wide, low-alpha
+   pools rather than a repeating pattern, so it reads as uneven paper stock
+   and never as a visible dot grid. */
+@utility texture-paper {
+  background-image:
+    radial-gradient(
+      ellipse 60% 45% at 12% 8%,
+      rgb(221 162 94 / 0.11) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 55% 50% at 92% 88%,
+      rgb(60 59 31 / 0.07) 0%,
+      transparent 70%
+    );
+  background-repeat: no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

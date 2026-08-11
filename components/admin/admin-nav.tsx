@@ -22,7 +22,7 @@ export function AdminNavDesktop() {
   const pathname = usePathname()
 
   return (
-    <nav className="hidden sm:flex items-center gap-1">
+    <nav className="hidden items-center gap-1 sm:flex">
       {NAV_LINKS.map(link => {
         const active = isActive(pathname, link.href)
         return (
@@ -30,13 +30,16 @@ export function AdminNavDesktop() {
             key={link.href}
             href={link.href}
             aria-current={active ? 'page' : undefined}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors active:scale-[0.97] ${
-              active
-                ? 'text-amber-700 bg-amber-50'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            className={`relative px-3 py-2 font-display text-sm uppercase tracking-[0.14em] transition-colors ${
+              active ? 'text-brand-400' : 'text-cream-200/65 hover:text-cream-50'
             }`}
           >
             {link.label}
+            <span
+              className={`absolute inset-x-2 -bottom-px h-0.5 origin-left bg-brand-400 transition-transform duration-200 ${
+                active ? 'scale-x-100' : 'scale-x-0'
+              }`}
+            />
           </Link>
         )
       })}
@@ -48,7 +51,7 @@ export function AdminNavMobile() {
   const pathname = usePathname()
 
   return (
-    <nav className="sm:hidden flex border-t border-gray-100">
+    <nav className="scrollbar-hide flex overflow-x-auto border-t border-cream-200/15 sm:hidden">
       {NAV_LINKS.map(link => {
         const active = isActive(pathname, link.href)
         return (
@@ -56,13 +59,16 @@ export function AdminNavMobile() {
             key={link.href}
             href={link.href}
             aria-current={active ? 'page' : undefined}
-            className={`flex-1 text-center py-2.5 text-xs font-medium transition-colors active:scale-[0.97] ${
-              active
-                ? 'text-amber-700 bg-amber-50'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            className={`relative flex-1 whitespace-nowrap px-3 py-3 text-center font-display text-xs uppercase tracking-[0.14em] transition-colors ${
+              active ? 'text-brand-400' : 'text-cream-200/60'
             }`}
           >
             {link.label}
+            <span
+              className={`absolute inset-x-2 bottom-0 h-0.5 origin-left bg-brand-400 transition-transform duration-200 ${
+                active ? 'scale-x-100' : 'scale-x-0'
+              }`}
+            />
           </Link>
         )
       })}

@@ -29,20 +29,12 @@ export function CafeApprovalActions({ cafeId }: { cafeId: string }) {
 
   return (
     <div className="flex flex-col items-end gap-2 shrink-0">
-      {error && <p className="text-xs text-red-600 text-right">{error}</p>}
+      {error && <p className="text-right text-xs text-red-700">{error}</p>}
       <div className="flex gap-2">
-        <button
-          onClick={handleReject}
-          disabled={isPending}
-          className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
-        >
+        <button onClick={handleReject} disabled={isPending} className="btn btn-outline btn-sm">
           Reject
         </button>
-        <button
-          onClick={handleApprove}
-          disabled={isPending}
-          className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-        >
+        <button onClick={handleApprove} disabled={isPending} className="btn btn-primary btn-sm">
           Approve
         </button>
       </div>

@@ -35,18 +35,17 @@ export function OrderStatusActions({ orderId, status }: { orderId: string; statu
               onClick={() => handleSetStatus(step)}
               disabled={isPending || isCurrent}
               aria-pressed={isCurrent}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 ${
-                isCurrent
-                  ? 'bg-amber-600 border-amber-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              data-active={isCurrent}
+              className="chip disabled:opacity-100"
             >
               {ORDER_STATUS_LABELS[step]}
             </button>
           )
         })}
       </div>
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 border-l-2 border-red-500 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+      )}
     </div>
   )
 }

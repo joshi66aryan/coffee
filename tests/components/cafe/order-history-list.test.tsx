@@ -69,8 +69,10 @@ describe('OrderHistoryList', () => {
     expect(screen.getByText('Whole Milk +1 more')).toBeInTheDocument()
   })
 
-  it('renders a fallback icon and no item line when there are no items', () => {
-    render(<OrderHistoryList orders={[makeOrder({ items: [] })]} />)
-    expect(screen.getByText('☕')).toBeInTheDocument()
+  it('renders a fallback mark and no item line when there are no items', () => {
+    const { container } = render(<OrderHistoryList orders={[makeOrder({ items: [] })]} />)
+    // No product photo to show, so the brand bean mark stands in.
+    expect(container.querySelector('img')).toBeNull()
+    expect(container.querySelector('#ss-bean-mark-crease')).toBeInTheDocument()
   })
 })

@@ -11,10 +11,10 @@ export function InstallAppRow() {
   return (
     <button
       onClick={() => promptInstall()}
-      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
+      className="flex w-full items-center gap-3.5 px-4 py-4 text-left transition-colors hover:bg-cream-100"
     >
-      <Download className="w-4 h-4 text-gray-400 shrink-0" />
-      <span className="flex-1 text-sm font-medium text-gray-900">Install App</span>
+      <Download className="h-4 w-4 shrink-0 text-brand-600" />
+      <span className="flex-1 font-display text-base leading-none text-brand-900">Install App</span>
     </button>
   )
 }

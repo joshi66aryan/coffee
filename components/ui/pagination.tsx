@@ -24,39 +24,35 @@ export function Pagination({ page, total, pageSize, basePath, q, extraParams }: 
   const to = Math.min(page * pageSize, total)
 
   return (
-    <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
-      <span>
+    <nav
+      aria-label="Pagination"
+      className="mt-5 flex items-center justify-between gap-4 border-t border-cream-300 pt-4"
+    >
+      <span className="eyebrow-sm text-gray-400">
         {from}–{to} of {total}
       </span>
+
       <div className="flex items-center gap-2">
         {page > 1 ? (
-          <Link
-            href={href(page - 1)}
-            className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors text-gray-700"
-          >
+          <Link href={href(page - 1)} className="btn btn-outline btn-sm">
             ← Prev
           </Link>
         ) : (
-          <span className="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed">
-            ← Prev
-          </span>
+          <span className="btn btn-outline btn-sm pointer-events-none opacity-40">← Prev</span>
         )}
-        <span className="px-2">
+
+        <span className="px-1 font-display text-sm tracking-[0.12em] text-brand-900 tabular-nums">
           {page} / {totalPages}
         </span>
+
         {page < totalPages ? (
-          <Link
-            href={href(page + 1)}
-            className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors text-gray-700"
-          >
+          <Link href={href(page + 1)} className="btn btn-outline btn-sm">
             Next →
           </Link>
         ) : (
-          <span className="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed">
-            Next →
-          </span>
+          <span className="btn btn-outline btn-sm pointer-events-none opacity-40">Next →</span>
         )}
       </div>
-    </div>
+    </nav>
   )
 }

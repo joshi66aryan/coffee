@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CatalogClient } from '@/components/cafe/catalog-client'
 import { CafeHeader } from '@/components/cafe/cafe-header'
+import { CatalogHero } from '@/components/cafe/catalog-hero'
 import { RepeatLastOrderCard } from '@/components/cafe/repeat-last-order-card'
 import { NotificationPromptBanner } from '@/components/cafe/notification-prompt-banner'
 import { InstallPromptBanner } from '@/components/ui/install-prompt-banner'
@@ -65,11 +66,13 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20 sm:pb-4">
+    <main className="min-h-screen bg-cream-100 pb-20 sm:pb-8">
       <RealtimeRefresh table="products" />
       <CafeHeader cafeName={cafe?.name} />
       <NotificationPromptBanner initialSubscribed={pushStatus.subscribed} />
       <InstallPromptBanner />
+
+      <CatalogHero cafeName={cafe?.name} />
 
       {lastOrder && lastOrderItems.length > 0 && (
         <RepeatLastOrderCard

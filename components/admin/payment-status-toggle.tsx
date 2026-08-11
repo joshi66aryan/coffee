@@ -18,9 +18,9 @@ const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
 }
 
 const PAYMENT_STATUS_CLASS: Record<PaymentStatus, string> = {
-  paid: 'bg-emerald-100 text-emerald-800',
-  pending: 'bg-amber-100 text-amber-800',
-  due: 'bg-red-100 text-red-800',
+  paid: 'bg-olive-600 text-cream-100',
+  pending: 'bg-brand-400 text-brand-950',
+  due: 'bg-red-600 text-cream-50',
 }
 
 export function PaymentStatusToggle({ orderId, status }: { orderId: string; status: PaymentStatus }) {
@@ -39,7 +39,7 @@ export function PaymentStatusToggle({ orderId, status }: { orderId: string; stat
       onClick={cycle}
       disabled={isPending}
       title="Click to cycle payment status"
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer disabled:opacity-50 transition-opacity ${PAYMENT_STATUS_CLASS[status]}`}
+      className={`pill cursor-pointer transition-opacity hover:opacity-80 disabled:opacity-50 ${PAYMENT_STATUS_CLASS[status]}`}
     >
       {isPending ? '…' : PAYMENT_STATUS_LABEL[status]}
     </button>

@@ -27,25 +27,23 @@ export function NotificationPromptBanner({ initialSubscribed }: { initialSubscri
   if (unsupported || subscribed || dismissed || permission === 'denied' || permission === null) return null
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 mb-6 flex items-center gap-3">
-      <Bell className="w-5 h-5 text-amber-600 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900">Get notified about new orders</p>
-        <p className="text-xs text-gray-500 mt-0.5">Know instantly when a café places an order.</p>
+    <div className="mb-6 flex items-center gap-3.5 rounded-lg border border-brand-300 border-l-4 border-l-brand-400 bg-brand-50 px-5 py-4">
+      <Bell className="h-4.5 w-4.5 shrink-0 text-brand-600" />
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-base leading-none text-brand-900">
+          Get notified about new orders
+        </p>
+        <p className="mt-1.5 text-xs text-gray-500">Know instantly when a café places an order.</p>
       </div>
-      <button
-        onClick={toggle}
-        disabled={isPending}
-        className="shrink-0 bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-amber-700 active:scale-95 transition-all disabled:opacity-50"
-      >
+      <button onClick={toggle} disabled={isPending} className="btn btn-primary btn-sm shrink-0">
         Enable
       </button>
       <button
         onClick={dismiss}
         aria-label="Dismiss"
-        className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+        className="shrink-0 text-gray-400 transition-colors hover:text-brand-900"
       >
-        <X className="w-4 h-4" />
+        <X className="h-4 w-4" />
       </button>
     </div>
   )

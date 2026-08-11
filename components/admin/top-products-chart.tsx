@@ -29,15 +29,15 @@ export function TopProductsChart({ products }: { products: TopProduct[] }) {
             onPointerEnter={() => setHovered(product.product_id)}
             onPointerLeave={() => setHovered(null)}
           >
-            <span className="w-28 shrink-0 text-sm text-gray-700 truncate" title={product.name}>
+            <span className="w-28 shrink-0 truncate font-display text-sm text-brand-900" title={product.name}>
               {product.name}
             </span>
-            <div className="flex-1 flex items-center gap-2 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <div
-                className={`h-6 rounded-r-[4px] bg-[#2a78d6] transition-opacity ${isHovered ? 'opacity-80' : ''}`}
+                className={`h-6 rounded-r-sm bg-brand-600 transition-opacity ${isHovered ? 'opacity-80' : ''}`}
                 style={{ width: `${widthPct}%` }}
               />
-              <span className="text-sm font-medium text-gray-900 tabular-nums whitespace-nowrap">
+              <span className="whitespace-nowrap font-display text-sm text-brand-900 tabular-nums">
                 {product.quantitySold} units
               </span>
               {isHovered && (

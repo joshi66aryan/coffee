@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
 import { CafeHeader } from '@/components/cafe/cafe-header'
+import { PageMasthead } from '@/components/ui/page-masthead'
 import { OrderHistoryList } from '@/components/cafe/order-history-list'
 import { OrderHistoryEmptyState } from '@/components/cafe/order-history-empty-state'
 import { UnpaidOrdersEmptyState } from '@/components/cafe/unpaid-orders-empty-state'
@@ -78,47 +78,41 @@ export default async function ProfileOrdersPage({ searchParams }: PageProps) {
   }))
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20 sm:pb-4">
+    <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
       <RealtimeRefresh table="orders" filter={`cafe_id=eq.${user.id}`} />
       <CafeHeader cafeName={cafe?.name} />
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        <Link
-          href="/profile"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Profile
-        </Link>
+      <div className="mx-auto max-w-2xl px-4 sm:px-6">
+        <PageMasthead
+          eyebrow={filter === 'unpaid' ? 'Outstanding' : 'History'}
+          title={filter === 'unpaid' ? 'Unpaid Orders' : 'Your Orders'}
+          backHref="/profile"
+          backLabel="Account"
+          action={
+            filter === 'unpaid' ? (
+              <Link href="/profile/orders" className="btn btn-outline btn-sm">
+                View all
+              </Link>
+            ) : undefined
+          }
+        />
 
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="text-lg font-bold text-gray-900">
-            {filter === 'unpaid' ? 'Unpaid Orders' : 'Your Orders'}
-          </h1>
-          {filter === 'unpaid' && (
-            <Link
-              href="/profile/orders"
-              className="text-xs font-medium text-amber-700 hover:text-amber-900 transition-colors"
-            >
-              View all orders
-            </Link>
+        <div className="pt-6">
+          {total === 0 ? (
+            filter === 'unpaid' ? <UnpaidOrdersEmptyState /> : <OrderHistoryEmptyState />
+          ) : (
+            <>
+              <OrderHistoryList orders={ordersWithPreview} />
+              <Pagination
+                page={page}
+                total={total}
+                pageSize={ORDERS_PAGE_SIZE}
+                basePath="/profile/orders"
+                extraParams={filter === 'unpaid' ? { filter } : undefined}
+              />
+            </>
           )}
         </div>
-
-        {total === 0 ? (
-          filter === 'unpaid' ? <UnpaidOrdersEmptyState /> : <OrderHistoryEmptyState />
-        ) : (
-          <>
-            <OrderHistoryList orders={ordersWithPreview} />
-            <Pagination
-              page={page}
-              total={total}
-              pageSize={ORDERS_PAGE_SIZE}
-              basePath="/profile/orders"
-              extraParams={filter === 'unpaid' ? { filter } : undefined}
-            />
-          </>
-        )}
       </div>
     </main>
   )

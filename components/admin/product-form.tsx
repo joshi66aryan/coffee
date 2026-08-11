@@ -87,16 +87,15 @@ export function ProductForm({ action, product, submitLabel }: Props) {
     })
   }
 
-  const fieldClass =
-    'block w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-  const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
+  const fieldClass = 'field'
+  const labelClass = 'field-label'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="name" className={labelClass}>
-            Product Name <span className="text-red-500">*</span>
+            Product Name <span className="text-red-600">*</span>
           </label>
           <input
             id="name"
@@ -111,7 +110,7 @@ export function ProductForm({ action, product, submitLabel }: Props) {
 
         <div>
           <label htmlFor="category" className={labelClass}>
-            Category <span className="text-red-500">*</span>
+            Category <span className="text-red-600">*</span>
           </label>
           <input
             id="category"
@@ -130,7 +129,7 @@ export function ProductForm({ action, product, submitLabel }: Props) {
 
         <div>
           <label htmlFor="unit" className={labelClass}>
-            Unit <span className="text-red-500">*</span>
+            Unit <span className="text-red-600">*</span>
           </label>
           <input
             id="unit"
@@ -149,7 +148,7 @@ export function ProductForm({ action, product, submitLabel }: Props) {
 
         <div>
           <label htmlFor="base_price" className={labelClass}>
-            Base Price (NPR) <span className="text-red-500">*</span>
+            Base Price (NPR) <span className="text-red-600">*</span>
           </label>
           <input
             id="base_price"
@@ -166,7 +165,7 @@ export function ProductForm({ action, product, submitLabel }: Props) {
 
         <div>
           <label htmlFor="stock_status" className={labelClass}>
-            Stock Status <span className="text-red-500">*</span>
+            Stock Status <span className="text-red-600">*</span>
           </label>
           <select
             id="stock_status"
@@ -208,18 +207,18 @@ export function ProductForm({ action, product, submitLabel }: Props) {
                 width={80}
                 height={80}
                 unoptimized
-                className="w-20 h-20 rounded-lg object-cover border border-gray-200"
+                className="arch-sm h-24 w-20 border border-cream-300 object-cover"
               />
               {isUploading && (
-                <div className="absolute inset-0 rounded-lg bg-white/70 flex items-center justify-center">
-                  <span className="w-4 h-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+                <div className="arch-sm absolute inset-0 flex items-center justify-center bg-white/70">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
                 </div>
               )}
               {!isUploading && (
                 <button
                   type="button"
                   onClick={handleClearImage}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-800 text-white text-xs flex items-center justify-center hover:bg-red-600 transition-colors"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-900 text-xs text-cream-50 transition-colors hover:bg-red-600"
                   aria-label="Remove image"
                 >
                   ×
@@ -235,29 +234,31 @@ export function ProductForm({ action, product, submitLabel }: Props) {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={handleImageChange}
-              className="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer"
+              className="block w-full cursor-pointer text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-brand-900 file:px-3.5 file:py-2 file:font-display file:text-sm file:uppercase file:tracking-[0.1em] file:text-cream-50 hover:file:bg-brand-950"
             />
-            <p className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP · max 5 MB</p>
+            <p className="mt-2 text-xs text-gray-400">JPEG, PNG, WebP · max 5 MB</p>
           </div>
         </div>
-        {uploadError && <p className="text-sm text-red-600 mt-2">{uploadError}</p>}
+        {uploadError && (
+          <p role="alert" className="mt-3 border-l-2 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">{uploadError}</p>
+        )}
       </div>
 
       {state?.error && (
-        <p className="text-sm text-red-600">{state.error}</p>
+        <p role="alert" className="border-l-2 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
       )}
 
       <div className="flex items-center gap-3 pt-1">
         <button
           type="submit"
           disabled={isPending || isUploading}
-          className="px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="btn btn-primary"
         >
           {isUploading ? 'Uploading image…' : isPending ? 'Saving…' : submitLabel}
         </button>
         <Link
           href="/admin/products"
-          className="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
+          className="btn btn-outline"
         >
           Cancel
         </Link>

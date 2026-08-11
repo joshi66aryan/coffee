@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { DollarSign, ShoppingCart, Clock, CircleDollarSign, Store, ArrowRight } from 'lucide-react'
 import { getDashboardStats } from '@/lib/admin/actions'
 import { StatCard } from '@/components/admin/stat-card'
 import { TopProductsTable } from '@/components/admin/top-products-table'
@@ -11,8 +12,8 @@ import { getPushSubscriptionStatus } from '@/lib/push/actions'
 
 export const metadata = { title: 'Dashboard — Admin' }
 
-function formatPrice(amount: number) {
-  return `Rs. ${amount.toLocaleString('en-IN')}`
+function formatAmount(amount: number) {
+  return amount.toLocaleString('en-IN')
 }
 
 export default async function AdminDashboardPage() {
@@ -21,8 +22,8 @@ export default async function AdminDashboardPage() {
     stats = await getDashboardStats()
   } catch {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Access denied.</p>
+      <div className="flex min-h-screen items-center justify-center bg-cream-100">
+        <p className="display-md text-brand-900">Access denied</p>
       </div>
     )
   }
@@ -30,62 +31,71 @@ export default async function AdminDashboardPage() {
   const { subscribed } = await getPushSubscriptionStatus()
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-cream-100 pb-16">
       <RealtimeRefresh table={['orders', 'cafes']} />
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Overview across all cafés</p>
-        </div>
 
-        <NotificationPromptBanner initialSubscribed={subscribed} />
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        {/* ---- Masthead --------------------------------------------------- */}
+        <header className="border-b border-cream-300 py-8 sm:py-10">
+          <p className="eyebrow">Operations</p>
+          <h1 className="display-lg mt-3 text-brand-900">Dashboard</h1>
+          <p className="mt-2 text-sm text-gray-500">Overview across all cafés</p>
+        </header>
+
+        <div className="pt-6">
+          <NotificationPromptBanner initialSubscribed={subscribed} />
+        </div>
 
         {stats.pendingCafes > 0 && (
           <Link
             href="/admin/cafes"
-            className="block bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 mb-6 hover:bg-amber-100 transition-colors"
+            className="group mb-6 flex items-center justify-between gap-4 rounded-lg border-l-4 border-brand-400 bg-brand-50 px-5 py-4 transition-colors hover:bg-brand-100"
           >
-            <span className="text-sm font-semibold text-amber-700">
-              {stats.pendingCafes} café {stats.pendingCafes === 1 ? 'application' : 'applications'} awaiting approval →
+            <span className="font-display text-base uppercase tracking-[0.08em] text-brand-800">
+              {stats.pendingCafes} café {stats.pendingCafes === 1 ? 'application' : 'applications'} awaiting approval
             </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-brand-700 transition-transform group-hover:translate-x-1" />
           </Link>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-          <StatCard label="Total Sales" value={formatPrice(stats.totalSales)} href="/admin/orders" />
-          <StatCard label="Total Orders" value={String(stats.totalOrders)} href="/admin/orders" />
-          <StatCard label="Active Orders" value={String(stats.activeOrders)} href="/admin/orders" />
-          <StatCard label="Outstanding Payments" value={formatPrice(stats.outstandingTotal)} href="/admin/payments" />
-          <StatCard label="Active Cafés" value={String(stats.activeCafes)} href="/admin/cafes" />
+        {/* ---- Statistics -------------------------------------------------- */}
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+          <StatCard label="Total Sales" prefix="Rs." value={formatAmount(stats.totalSales)} href="/admin/orders" icon={DollarSign} />
+          <StatCard label="Total Orders" value={String(stats.totalOrders)} href="/admin/orders" icon={ShoppingCart} />
+          <StatCard label="Active Orders" value={String(stats.activeOrders)} href="/admin/orders" icon={Clock} />
+          <StatCard label="Outstanding" prefix="Rs." value={formatAmount(stats.outstandingTotal)} href="/admin/payments" icon={CircleDollarSign} />
+          <StatCard label="Active Cafés" value={String(stats.activeCafes)} href="/admin/cafes" icon={Store} />
         </div>
 
-        <section className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
-          <div className="px-5 py-3 border-b border-gray-100">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Sales Trend — Last 30 Days</h2>
+        {/* ---- Sales trend -------------------------------------------------- */}
+        <section className="mb-6 overflow-hidden rounded-xl border border-cream-300 bg-white">
+          <div className="flex items-baseline justify-between gap-3 border-b border-cream-300 bg-cream-100 px-5 py-3.5">
+            <h2 className="display-sm text-brand-900">Sales Trend</h2>
+            <span className="eyebrow-sm text-gray-400">Last 30 Days</span>
           </div>
-          <div className="px-5 py-4">
+          <div className="px-5 py-5">
             <SalesTrendChart data={stats.salesTrend} />
           </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Orders by Status</h2>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+            <div className="border-b border-cream-300 bg-cream-100 px-5 py-3.5">
+              <h2 className="display-sm text-brand-900">Orders by Status</h2>
             </div>
-            <div className="px-5 py-4">
+            <div className="px-5 py-5">
               <OrderStatusChart counts={stats.statusCounts} />
             </div>
           </section>
 
-          <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Top Selling Products</h2>
+          <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+            <div className="border-b border-cream-300 bg-cream-100 px-5 py-3.5">
+              <h2 className="display-sm text-brand-900">Top Selling Products</h2>
             </div>
-            <div className="px-5 py-4">
+            <div className="px-5 py-5">
               <TopProductsChart products={stats.topProducts} />
             </div>
-            <div className="px-5 border-t border-gray-100">
+            <div className="border-t border-cream-300 px-5">
               <TopProductsTable products={stats.topProducts} />
             </div>
           </section>

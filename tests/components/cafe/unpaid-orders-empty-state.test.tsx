@@ -5,7 +5,7 @@ import { UnpaidOrdersEmptyState } from '@/components/cafe/unpaid-orders-empty-st
 describe('UnpaidOrdersEmptyState', () => {
   it('shows the all-paid-up message', () => {
     render(<UnpaidOrdersEmptyState />)
-    expect(screen.getByText("You're all paid up!")).toBeInTheDocument()
-    expect(screen.getByText('No outstanding bills right now.')).toBeInTheDocument()
+    expect(screen.getByText('All paid up')).toBeInTheDocument()
+    expect(screen.getByText('You have no outstanding bills right now.')).toBeInTheDocument()
   })
 })

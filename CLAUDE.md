@@ -6,7 +6,7 @@
 
 ## Stack
 
-Next.js 16 App Router · Supabase (Postgres + phone OTP + storage) · Tailwind + shadcn/ui · hand-rolled PWA (`public/sw.js` + `app/manifest.ts`, no next-pwa/Workbox — incompatible with this repo's Turbopack build) · @react-pdf/renderer · Vitest + RTL · Playwright
+Next.js 16 App Router · Supabase (Postgres + email/password + Google OAuth + storage) · Tailwind + shadcn/ui · hand-rolled PWA (`public/sw.js` + `app/manifest.ts`, no next-pwa/Workbox — incompatible with this repo's Turbopack build) · @react-pdf/renderer · Vitest + RTL · Playwright
 
 ## Structure
 
@@ -22,7 +22,8 @@ supabase/migrations/
 
 ## Auth
 
-Phone OTP via Supabase. Roles: `cafe_manager` | `admin`.  
+Email/password and Google OAuth via Supabase (`app/auth/callback/route.ts` exchanges the OAuth code for a session). Roles: `cafe_manager` | `admin`.  
+Phone number is collected at onboarding (`cafes.phone`, Nepal format) — it is no longer tied to authentication.  
 Always call `supabase.auth.getUser()` + check role on every API route and Server Action.  
 Never expose `SUPABASE_SERVICE_ROLE_KEY` to the client. RLS is the primary defense.
 

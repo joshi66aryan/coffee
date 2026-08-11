@@ -5,9 +5,7 @@ export function CreditEligibilityBadge({ completedOrders }: { completedOrders: n
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-        eligible ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-      }`}
+      className={`pill ${eligible ? 'bg-olive-600 text-cream-100' : 'bg-cream-200 text-brand-900'}`}
     >
       {eligible
         ? `Credit eligible · ${completedOrders} completed orders`

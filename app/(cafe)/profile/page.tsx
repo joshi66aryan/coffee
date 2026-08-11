@@ -5,6 +5,7 @@ import { Settings } from 'lucide-react'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { ProfileHeaderCard } from '@/components/cafe/profile-header-card'
 import { ProfileQuickNav } from '@/components/cafe/profile-quick-nav'
+import { PageMasthead } from '@/components/ui/page-masthead'
 import { ContactSupportRow } from '@/components/cafe/contact-support-row'
 import { RepeatLastOrderCard } from '@/components/cafe/repeat-last-order-card'
 import { OutstandingBillsCard } from '@/components/cafe/outstanding-bills-card'
@@ -67,39 +68,48 @@ export default async function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20 sm:pb-4">
+    <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
       <CafeHeader cafeName={cafe.name} />
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        <div className="flex items-center gap-2">
+      <div className="mx-auto max-w-2xl px-4 sm:px-6">
+        <PageMasthead
+          eyebrow="Your café"
+          title="Account"
+          action={
+            <Link
+              href="/settings/app"
+              aria-label="App settings"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-cream-300 bg-white text-gray-500 transition-colors hover:border-brand-600 hover:text-brand-900"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
+          }
+        />
+
+        <div className="space-y-5 pt-6">
           <ProfileQuickNav />
-          <Link
-            href="/settings/app"
-            aria-label="App settings"
-            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-amber-300 hover:text-amber-700 transition-colors"
-          >
-            <Settings className="w-4 h-4" />
-          </Link>
+
+          <ProfileHeaderCard cafe={cafe} />
+
+          {outstanding.count > 0 && (
+            <OutstandingBillsCard count={outstanding.count} totalAmount={outstanding.totalAmount} />
+          )}
+
+          {lastOrder && lastOrderItems.length > 0 && (
+            <div>
+              <h2 className="eyebrow mb-2.5">Recent Order</h2>
+              <RepeatLastOrderCard
+                shortId={lastOrder.id.split('-')[0].toUpperCase()}
+                total={lastOrder.total_amount}
+                items={lastOrderItems}
+                dismissible={false}
+                showHeader={false}
+              />
+            </div>
+          )}
+
+          <ContactSupportRow />
         </div>
-
-        <ProfileHeaderCard cafe={cafe} />
-
-        {outstanding.count > 0 && (
-          <OutstandingBillsCard count={outstanding.count} totalAmount={outstanding.totalAmount} />
-        )}
-
-        {lastOrder && lastOrderItems.length > 0 && (
-          <div>
-            <h2 className="px-1 pb-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Recent Order</h2>
-            <RepeatLastOrderCard
-              shortId={lastOrder.id.split('-')[0].toUpperCase()}
-              total={lastOrder.total_amount}
-              items={lastOrderItems}
-            />
-          </div>
-        )}
-
-        <ContactSupportRow />
       </div>
     </main>
   )

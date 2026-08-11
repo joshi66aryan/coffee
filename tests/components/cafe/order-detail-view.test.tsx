@@ -57,7 +57,7 @@ describe('OrderDetailView', () => {
 
   it('marks the current status step and leaves later steps inactive', () => {
     render(<OrderDetailView order={makeOrder({ status: 'confirmed' })} items={items} />)
-    expect(screen.getByText('Confirmed')).toHaveClass('text-gray-900')
+    expect(screen.getByText('Confirmed')).toHaveClass('text-brand-900')
     expect(screen.getByText('Current status')).toBeInTheDocument()
     expect(screen.getByText('Delivered')).toHaveClass('text-gray-300')
   })

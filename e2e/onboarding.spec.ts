@@ -39,26 +39,34 @@ test.describe('Login page — browser UI', () => {
     await page.goto('/login')
   })
 
-  test('shows +977 prefix and disabled Send Code button', async ({ page }) => {
-    await expect(page.getByText('+977')).toBeVisible()
-    await expect(page.getByRole('button', { name: /send code/i })).toBeDisabled()
+  test('shows the Google sign-in button and email/password fields', async ({ page }) => {
+    await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible()
+    await expect(page.getByLabel(/^email$/i)).toBeVisible()
+    await expect(page.getByLabel(/^password$/i)).toBeVisible()
   })
 
-  test('Send Code enables after typing a phone number', async ({ page }) => {
-    await page.getByLabel(/phone number/i).fill('9841234567')
-    await expect(page.getByRole('button', { name: /send code/i })).toBeEnabled()
+  test('Sign in is disabled until both fields are filled', async ({ page }) => {
+    await expect(page.getByRole('button', { name: /^sign in$/i })).toBeDisabled()
+    await page.getByLabel(/^email$/i).fill('cafe@example.com')
+    await page.getByLabel(/^password$/i).fill('password123')
+    await expect(page.getByRole('button', { name: /^sign in$/i })).toBeEnabled()
   })
 
-  test('shows a validation error for an invalid phone', async ({ page }) => {
-    await page.getByLabel(/phone number/i).fill('12')
-    await page.getByRole('button', { name: /send code/i }).click()
-    await expect(page.locator('p.text-red-600')).toBeVisible({ timeout: 5000 })
+  test('shows a validation error for invalid credentials', async ({ page }) => {
+    await page.getByLabel(/^email$/i).fill('cafe@example.com')
+    await page.getByLabel(/^password$/i).fill('wrongpassword')
+    await page.getByRole('button', { name: /^sign in$/i }).click()
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 })
   })
 
-  test('OTP step appears after a successful send', async ({ page }) => {
-    // Uses Supabase test phone — configure +9779800000000 with token 123456
-    await page.getByLabel(/phone number/i).fill('9800000000')
-    await page.getByRole('button', { name: /send code/i }).click()
-    await expect(page.getByLabel(/verification code/i)).toBeVisible({ timeout: 10000 })
+  test('switching to sign-up via the toggle phrase shows live password strength feedback', async ({ page }) => {
+    await page.getByRole('button', { name: /don't have an account\? sign up/i }).click()
+    await expect(page.getByRole('button', { name: /create account/i })).toBeVisible()
+
+    await page.getByLabel(/^password$/i).fill('weak')
+    await expect(page.getByText(/too weak/i)).toBeVisible()
+
+    await page.getByLabel(/^password$/i).fill('Str0ng!Password')
+    await expect(page.getByText(/^strong$/i)).toBeVisible()
   })
 })

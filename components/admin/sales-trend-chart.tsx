@@ -89,7 +89,7 @@ export function SalesTrendChart({ data }: { data: DailySales[] }) {
                 x2={WIDTH - PADDING.right}
                 y1={yAt(tick)}
                 y2={yAt(tick)}
-                className="stroke-[#e1e0d9]"
+                className="stroke-cream-300"
                 strokeWidth={1}
               />
               <text
@@ -97,7 +97,7 @@ export function SalesTrendChart({ data }: { data: DailySales[] }) {
                 y={yAt(tick)}
                 textAnchor="end"
                 dominantBaseline="middle"
-                className="fill-[#898781] text-[10px] tabular-nums"
+                className="fill-gray-400 text-[10px] tabular-nums"
               >
                 {formatAxisPrice(tick)}
               </text>
@@ -105,16 +105,16 @@ export function SalesTrendChart({ data }: { data: DailySales[] }) {
           ))}
 
           {labelIndices.map(i => (
-            <text key={i} x={xAt(i)} y={HEIGHT - 8} textAnchor="middle" className="fill-[#898781] text-[10px]">
+            <text key={i} x={xAt(i)} y={HEIGHT - 8} textAnchor="middle" className="fill-gray-400 text-[10px]">
               {formatDateLabel(data[i].date)}
             </text>
           ))}
 
-          <polygon points={areaPoints} className="fill-[#2a78d6] opacity-10" />
+          <polygon points={areaPoints} className="fill-brand-600 opacity-10" />
           <polyline
             points={linePoints}
             fill="none"
-            className="stroke-[#2a78d6]"
+            className="stroke-brand-600"
             strokeWidth={2}
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -127,14 +127,14 @@ export function SalesTrendChart({ data }: { data: DailySales[] }) {
                 x2={xAt(hoverIndex)}
                 y1={PADDING.top}
                 y2={baselineY}
-                className="stroke-[#c3c2b7]"
+                className="stroke-cream-400"
                 strokeWidth={1}
               />
               <circle
                 cx={xAt(hoverIndex)}
                 cy={yAt(data[hoverIndex].total)}
                 r={4}
-                className="fill-[#2a78d6] stroke-white"
+                className="fill-brand-600 stroke-white"
                 strokeWidth={2}
               />
             </>
@@ -143,36 +143,34 @@ export function SalesTrendChart({ data }: { data: DailySales[] }) {
 
         {hovered && (
           <div
-            className="absolute top-2 -translate-x-1/2 pointer-events-none bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg"
+            className="pointer-events-none absolute top-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-brand-900 px-2.5 py-1.5 text-xs text-cream-100 shadow-lg"
             style={{ left: `${tooltipLeftPct}%` }}
           >
-            <p className="font-semibold">{formatPrice(hovered.total)}</p>
-            <p className="text-gray-300">{formatDateLabel(hovered.date)}</p>
+            <p className="font-display text-sm leading-none tabular-nums">{formatPrice(hovered.total)}</p>
+            <p className="mt-1.5 text-cream-200/60">{formatDateLabel(hovered.date)}</p>
           </div>
         )}
       </div>
 
       <details className="mt-2">
-        <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 select-none">
+        <summary className="eyebrow-sm cursor-pointer select-none text-gray-400 hover:text-brand-900">
           View as table
         </summary>
-        <div className="mt-2 max-h-48 overflow-y-auto border border-gray-100 rounded-lg">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-gray-50">
+        <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-cream-300">
+          <table className="table-brand">
+            <thead className="sticky top-0">
               <tr>
-                <th className="text-left py-1.5 px-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
-                  Date
-                </th>
-                <th className="text-right py-1.5 px-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
-                  Sales
-                </th>
+                <th>Date</th>
+                <th className="text-right!">Sales</th>
               </tr>
             </thead>
             <tbody>
               {data.map(d => (
-                <tr key={d.date} className="border-t border-gray-100">
-                  <td className="py-1.5 px-3 text-gray-600">{formatDateLabel(d.date)}</td>
-                  <td className="py-1.5 px-3 text-right text-gray-900 tabular-nums">{formatPrice(d.total)}</td>
+                <tr key={d.date}>
+                  <td className="py-2! text-gray-600">{formatDateLabel(d.date)}</td>
+                  <td className="py-2! text-right font-display text-base text-brand-900 tabular-nums">
+                    {formatPrice(d.total)}
+                  </td>
                 </tr>
               ))}
             </tbody>

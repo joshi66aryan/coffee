@@ -1,24 +1,34 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SignOutButton } from '@/components/sign-out-button'
-
-const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
 
 const mockSignOut = vi.fn()
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({ auth: { signOut: mockSignOut } }),
 }))
 
+const originalLocation = window.location
+
 beforeEach(() => {
   vi.clearAllMocks()
+  Object.defineProperty(window, 'location', {
+    writable: true,
+    configurable: true,
+    value: { ...originalLocation, href: '' },
+  })
+})
+
+afterEach(() => {
+  Object.defineProperty(window, 'location', {
+    writable: true,
+    configurable: true,
+    value: originalLocation,
+  })
 })
 
 describe('SignOutButton', () => {
-  it('signs out and redirects to /login when clicked', async () => {
+  it('signs out and hard-navigates to /login when clicked', async () => {
     mockSignOut.mockResolvedValue({})
     render(<SignOutButton />)
 
@@ -26,7 +36,7 @@ describe('SignOutButton', () => {
 
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalledOnce()
-      expect(mockPush).toHaveBeenCalledWith('/login')
+      expect(window.location.href).toBe('/login')
     })
   })
 

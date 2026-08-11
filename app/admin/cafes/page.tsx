@@ -5,6 +5,7 @@ import { PAGE_SIZE } from '@/lib/admin/constants'
 import { CafeApprovalActions } from '@/components/admin/cafe-approval-actions'
 import { SearchInput } from '@/components/admin/search-input'
 import { Pagination } from '@/components/ui/pagination'
+import { PageMasthead } from '@/components/ui/page-masthead'
 import { RealtimeRefresh } from '@/components/ui/realtime-refresh'
 import type { Cafe, CafeStatus } from '@/lib/types'
 
@@ -17,41 +18,39 @@ const STATUS_LABEL: Record<CafeStatus, string> = {
 }
 
 const STATUS_CLASS: Record<CafeStatus, string> = {
-  pending:  'bg-yellow-100 text-yellow-800',
-  active:   'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
+  pending:  'bg-brand-400 text-brand-950',
+  active:   'bg-olive-600 text-cream-100',
+  rejected: 'bg-cream-300 text-brand-900',
 }
 
 function CafeRow({ cafe, showActions }: { cafe: Cafe; showActions: boolean }) {
   return (
-    <tr className="border-b border-gray-100 last:border-0">
-      <td className="py-3 pr-4">
-        <p className="font-medium text-gray-900">{cafe.name}</p>
-        <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{cafe.delivery_address}</p>
+    <tr>
+      <td>
+        <p className="font-display text-base leading-none text-brand-900">{cafe.name}</p>
+        <p className="mt-1.5 max-w-xs truncate text-xs text-gray-400">{cafe.delivery_address}</p>
       </td>
-      <td className="py-3 pr-4 text-sm text-gray-600">{cafe.contact_name}</td>
-      <td className="py-3 pr-4 text-sm text-gray-600 tabular-nums">{cafe.phone}</td>
-      <td className="py-3 pr-4 text-sm text-gray-600">{cafe.neighborhood}</td>
-      <td className="py-3 pr-4">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_CLASS[cafe.status]}`}>
-          {STATUS_LABEL[cafe.status]}
-        </span>
+      <td className="text-gray-600">{cafe.contact_name}</td>
+      <td className="text-gray-600 tabular-nums">{cafe.phone}</td>
+      <td className="text-gray-600">{cafe.neighborhood}</td>
+      <td>
+        <span className={`pill ${STATUS_CLASS[cafe.status]}`}>{STATUS_LABEL[cafe.status]}</span>
       </td>
-      <td className="py-3 pr-4 text-xs text-gray-400 tabular-nums whitespace-nowrap">
+      <td className="whitespace-nowrap text-xs text-gray-400 tabular-nums">
         {new Date(cafe.created_at).toLocaleDateString('en-US', {
           day: 'numeric',
           month: 'short',
           year: 'numeric',
         })}
       </td>
-      <td className="py-3 text-right">
+      <td className="text-right">
         <div className="flex items-center justify-end gap-3">
           {showActions && cafe.status === 'pending' && (
             <CafeApprovalActions cafeId={cafe.id} />
           )}
           <Link
             href={`/admin/cafes/${cafe.id}`}
-            className="text-sm text-amber-700 hover:text-amber-900 font-medium whitespace-nowrap"
+            className="whitespace-nowrap font-display text-sm uppercase tracking-[0.12em] text-brand-700 transition-colors hover:text-brand-900"
           >
             View →
           </Link>
@@ -64,16 +63,16 @@ function CafeRow({ cafe, showActions }: { cafe: Cafe; showActions: boolean }) {
 function CafeTable({ cafes, showActions }: { cafes: Cafe[]; showActions: boolean }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-175">
+      <table className="table-brand min-w-175">
         <thead>
-          <tr className="border-b border-gray-100">
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Café</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Contact</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Phone</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Neighborhood</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Status</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Applied</th>
-            <th className="py-2.5 text-right text-xs font-medium text-gray-400 uppercase tracking-wide">Actions</th>
+          <tr>
+            <th>Café</th>
+            <th>Contact</th>
+            <th>Phone</th>
+            <th>Neighborhood</th>
+            <th>Status</th>
+            <th>Applied</th>
+            <th className="text-right!">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -99,8 +98,8 @@ export default async function AdminCafesPage({ searchParams }: PageProps) {
     result = await getCafes({ q, page })
   } catch {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Access denied.</p>
+      <div className="flex min-h-screen items-center justify-center bg-cream-100">
+        <p className="display-md text-brand-900">Access denied</p>
       </div>
     )
   }
@@ -114,58 +113,57 @@ export default async function AdminCafesPage({ searchParams }: PageProps) {
   const rest     = !isFiltered ? cafes.filter((c) => c.status !== 'pending') : cafes
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-cream-100 pb-16">
       <RealtimeRefresh table="cafes" />
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Cafés</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{total} total</p>
-          </div>
-          <Suspense>
-            <SearchInput placeholder="Search name, phone, neighborhood…" />
-          </Suspense>
-        </div>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <PageMasthead
+          eyebrow="Accounts"
+          title="Cafés"
+          description={`${total} total`}
+          action={
+            <Suspense>
+              <SearchInput placeholder="Search name, phone, neighborhood…" />
+            </Suspense>
+          }
+        />
 
-        {cafes.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <p className="text-gray-500">
-              {q ? `No cafés match "${q}".` : 'No café applications yet.'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Pending section — always shown when not searching, regardless of page */}
-            {pending.length > 0 && (
-              <section className="bg-white rounded-xl border border-amber-200 overflow-hidden">
-                <div className="px-5 py-3 bg-amber-50 border-b border-amber-100">
-                  <h2 className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
-                    Pending Approval ({pending.length})
-                  </h2>
-                </div>
-                <div className="px-5">
-                  <CafeTable cafes={pending} showActions={true} />
-                </div>
-              </section>
-            )}
-
-            {/* All cafés (or search results) with pagination */}
-            {rest.length > 0 && (
-              <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                {!isFiltered && (
-                  <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-                    <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      All Cafés
-                    </h2>
+        <div className="pt-6">
+          {cafes.length === 0 ? (
+            <div className="rounded-xl border border-cream-300 bg-white px-8 py-16 text-center">
+              <p className="display-md text-brand-900">
+                {q ? 'No matching cafés' : 'No applications yet'}
+              </p>
+              <p className="mt-2 text-sm text-gray-500">
+                {q ? `Nothing matches \u201c${q}\u201d.` : 'New café applications will appear here.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Pending section — always shown when not searching, regardless of page */}
+              {pending.length > 0 && (
+                <section className="overflow-hidden rounded-xl border border-brand-400 bg-white">
+                  <div className="flex items-baseline justify-between gap-3 border-b border-brand-300 bg-brand-50 px-5 py-3.5">
+                    <h2 className="display-sm text-brand-900">Pending Approval</h2>
+                    <span className="eyebrow-sm text-brand-600">{pending.length}</span>
                   </div>
-                )}
-                <div className="px-5">
+                  <CafeTable cafes={pending} showActions={true} />
+                </section>
+              )}
+
+              {/* All cafés (or search results) with pagination */}
+              {rest.length > 0 && (
+                <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+                  {!isFiltered && (
+                    <div className="border-b border-cream-300 bg-cream-100 px-5 py-3.5">
+                      <h2 className="display-sm text-brand-900">All Cafés</h2>
+                    </div>
+                  )}
                   <CafeTable cafes={rest} showActions={isFiltered} />
-                </div>
-              </section>
-            )}
-          </div>
-        )}
+                </section>
+              )}
+            </div>
+          )}
+        </div>
 
         <Pagination
           page={page}

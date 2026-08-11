@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { ShoppingCart } from 'lucide-react'
+import { EmptyState } from '@/components/cafe/empty-state'
 
 export function CartEmptyState() {
   const [hasCart, setHasCart] = useState(true) // true until we know otherwise (avoids flash)
@@ -28,18 +28,12 @@ export function CartEmptyState() {
   if (hasCart) return null
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center py-16 px-8 text-center">
-      <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-        <ShoppingCart className="w-7 h-7 text-gray-300" />
-      </div>
-      <p className="font-semibold text-gray-700">Your cart is empty</p>
-      <p className="text-sm text-gray-400 mt-1">Add items from the Home tab to place an order.</p>
-      <Link
-        href="/"
-        className="mt-5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
-      >
-        Browse Catalog
-      </Link>
-    </div>
+    <EmptyState
+      icon={ShoppingCart}
+      title="Your cart is empty"
+      description="Browse the collection and add beans to start an order."
+      actionHref="/"
+      actionLabel="Browse catalog"
+    />
   )
 }

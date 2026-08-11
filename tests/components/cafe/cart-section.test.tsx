@@ -179,4 +179,53 @@ describe('CartSection', () => {
       expect(mockPush).toHaveBeenCalledWith('/order/confirm?orderId=order-123')
     })
   })
+
+  it('shows a warning and disables Place Order when the café profile is incomplete', async () => {
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 2 }))
+    mockGetCartProducts.mockResolvedValue([makeProduct()])
+
+    render(<CartSection creditEnabled={false} profileComplete={false} />)
+
+    await waitFor(() => expect(screen.getByText('Espresso Beans')).toBeInTheDocument())
+    expect(screen.getByText(/add your phone number and delivery address/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /complete your profile to continue/i })).toBeDisabled()
+    expect(mockPlaceOrder).not.toHaveBeenCalled()
+  })
+
+  it('asks for confirmation before placing a large order, and cancelling does not submit', async () => {
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 30 }))
+    mockGetCartProducts.mockResolvedValue([makeProduct()]) // 30 * 800 = Rs. 24,000 — above threshold
+
+    render(<CartSection creditEnabled={false} />)
+
+    await waitFor(() => expect(screen.getByText('Espresso Beans')).toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: /place order/i }))
+
+    expect(screen.getByText(/this is a large order/i)).toBeInTheDocument()
+    expect(mockPlaceOrder).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: /review cart/i }))
+    expect(screen.queryByText(/this is a large order/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /place order/i })).toBeInTheDocument()
+  })
+
+  it('places the order after confirming a large order', async () => {
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 30 }))
+    mockGetCartProducts.mockResolvedValue([makeProduct()])
+    mockPlaceOrder.mockResolvedValue({ orderId: 'order-456' })
+
+    render(<CartSection creditEnabled={false} />)
+
+    await waitFor(() => expect(screen.getByText('Espresso Beans')).toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: /place order/i }))
+    await userEvent.click(screen.getByRole('button', { name: /confirm & place order/i }))
+
+    await waitFor(() => {
+      expect(mockPlaceOrder).toHaveBeenCalledWith({
+        items: [{ product_id: 'product-1', quantity: 30 }],
+        payment_type: 'cash',
+      })
+      expect(mockPush).toHaveBeenCalledWith('/order/confirm?orderId=order-456')
+    })
+  })
 })

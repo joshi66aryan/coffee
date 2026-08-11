@@ -7,16 +7,18 @@ export function ContactSupportRow() {
       href={SUPPORT_WHATSAPP_LINK}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+      className="flex items-center gap-3.5 rounded-xl border border-cream-300 bg-white px-4 py-4 transition-colors hover:border-brand-600 hover:bg-cream-100"
     >
-      <span className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-        <MessageCircle className="w-4 h-4 text-emerald-600" />
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-olive-600 text-cream-100">
+        <MessageCircle className="h-4 w-4" aria-hidden="true" />
       </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900">Need help?</p>
-        <p className="text-xs text-gray-400">Contact support on WhatsApp</p>
+
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-base leading-none text-brand-900">Need help?</p>
+        <p className="mt-2 text-xs text-gray-500">Contact support on WhatsApp</p>
       </div>
-      <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+
+      <ChevronRight className="h-4 w-4 shrink-0 text-cream-400" />
     </a>
   )
 }

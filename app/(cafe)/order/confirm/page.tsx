@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Check } from 'lucide-react'
 import { ClearCartOnMount } from '@/components/cafe/clear-cart-on-mount'
+import { BeanScatter } from '@/components/brand/bean-scatter'
 import type { Order } from '@/lib/types'
 import logger from '@/lib/logger'
 
@@ -47,79 +49,84 @@ export default async function ConfirmPage({
   const shortId = orderId.split('-')[0].toUpperCase()
 
   return (
-    <main className="min-h-screen bg-linear-to-b from-amber-50 to-white flex flex-col items-center justify-center px-4 py-12">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-cream-100 px-4 py-14">
       <ClearCartOnMount />
-      <div className="max-w-sm w-full space-y-4">
-        {/* Success animation */}
-        <div className="text-center mb-2">
-          <div className="inline-flex items-center justify-center w-24 h-24 bg-emerald-100 rounded-full mb-5 shadow-inner">
-            <svg className="w-12 h-12 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Order Placed!</h1>
-          <p className="text-gray-500 mt-1.5 text-sm">We've received your order and will confirm it shortly.</p>
-        </div>
 
-        {/* Order card */}
-        <div className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100">
-          <div className="bg-amber-600 px-5 pt-5 pb-6">
-            <p className="text-amber-200 text-xs font-semibold uppercase tracking-widest">Order ID</p>
-            <p className="text-3xl font-bold font-mono text-white mt-1">{shortId}</p>
-            <p className="text-amber-200 text-xs mt-1">
-              {new Date(order.created_at).toLocaleDateString('en-US', {
-                month: 'short', day: 'numeric', year: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-              })}
-            </p>
-          </div>
+      <div className="animate-rise w-full max-w-sm">
+        {/* The order docket, arched like a pouch label. */}
+        <article className="overflow-hidden rounded-t-[5rem] rounded-b-xl border border-cream-300 bg-white">
+          <header className="relative overflow-hidden bg-brand-900 px-6 pb-7 pt-10 text-center">
+            <BeanScatter className="text-cream-50/6" count={3} />
 
-          <div className="divide-y divide-gray-100">
-            <div className="px-5 py-3.5 flex justify-between items-center">
-              <span className="text-sm text-gray-500">Total</span>
-              <span className="font-bold text-gray-900 text-base">{formatPrice(order.total_amount)}</span>
-            </div>
-            <div className="px-5 py-3.5 flex justify-between items-center">
-              <span className="text-sm text-gray-500">Payment</span>
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                order.payment_type === 'cash'
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-blue-50 text-blue-700'
-              }`}>
-                {order.payment_type === 'cash' ? '💵 Cash' : '📋 Credit'}
+            <div className="relative">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-400 text-brand-950">
+                <Check className="h-7 w-7" strokeWidth={3} aria-hidden="true" />
               </span>
+              <h1 className="display-md mt-5 text-cream-50">Order placed</h1>
+              <p className="mt-2.5 text-sm text-cream-200/70">
+                We&apos;ve received it and will confirm shortly.
+              </p>
+
+              <div className="mt-7 border-t border-cream-200/20 pt-5">
+                <p className="eyebrow-sm text-cream-200/50">Order ID</p>
+                <p className="mt-2 font-display text-4xl leading-none tracking-wider text-brand-400">
+                  {shortId}
+                </p>
+                <p className="mt-2.5 text-[11px] text-cream-200/50">
+                  {new Date(order.created_at).toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </p>
+              </div>
             </div>
-            <div className="px-5 py-3.5 flex justify-between items-center">
-              <span className="text-sm text-gray-500">Status</span>
-              <span className="text-xs font-semibold bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">
-                Received
-              </span>
+          </header>
+
+          <dl className="divide-y divide-cream-200">
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <dt className="eyebrow-sm text-gray-400">Total</dt>
+              <dd className="font-display text-xl leading-none text-brand-900 tabular-nums">
+                {formatPrice(order.total_amount)}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <dt className="eyebrow-sm text-gray-400">Payment</dt>
+              <dd>
+                <span className={`pill ${
+                  order.payment_type === 'cash'
+                    ? 'bg-olive-600 text-cream-100'
+                    : 'bg-brand-400 text-brand-950'
+                }`}>
+                  {order.payment_type === 'cash' ? 'Cash' : 'Credit'}
+                </span>
+              </dd>
+            </div>
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <dt className="eyebrow-sm text-gray-400">Status</dt>
+              <dd>
+                <span className="pill bg-cream-200 text-brand-900">Received</span>
+              </dd>
             </div>
             {order.delivery_date && (
-              <div className="px-5 py-3.5 flex justify-between items-center">
-                <span className="text-sm text-gray-500">Delivery</span>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900">{formatDeliveryDate(order.delivery_date)}</p>
-                  <p className="text-xs text-gray-400">5–6 PM window</p>
-                </div>
+              <div className="flex items-center justify-between px-5 py-3.5">
+                <dt className="eyebrow-sm text-gray-400">Delivery</dt>
+                <dd className="text-right">
+                  <p className="font-display text-base leading-none text-brand-900">
+                    {formatDeliveryDate(order.delivery_date)}
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-gray-400">5–6 PM window</p>
+                </dd>
               </div>
             )}
-          </div>
-        </div>
+          </dl>
+        </article>
 
-        {/* Actions */}
-        <div className="space-y-2.5 pt-1">
-          <Link
-            href={`/orders/${orderId}`}
-            className="block w-full bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-semibold rounded-2xl py-4 text-center transition-all shadow-lg shadow-amber-200/60"
-          >
-            Track Order
+        <div className="mt-4 space-y-2.5">
+          <Link href={`/orders/${orderId}`} className="btn btn-primary btn-block btn-lg">
+            Track order
           </Link>
-          <Link
-            href="/"
-            className="block w-full bg-white hover:bg-gray-50 active:scale-[0.98] text-gray-700 font-medium rounded-2xl py-4 text-center border border-gray-200 transition-all"
-          >
-            Back to Home
+          <Link href="/" className="btn btn-outline btn-block">
+            Back to catalog
           </Link>
         </div>
       </div>

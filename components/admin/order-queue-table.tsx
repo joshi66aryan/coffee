@@ -10,11 +10,14 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   delivered: 'Delivered',
 }
 
+// Progression through the order lifecycle is expressed as a climb through the
+// brand palette — cream foothills up to the olive summit — rather than the
+// stock blue/purple/green status colours.
 const STATUS_CLASS: Record<OrderStatus, string> = {
-  received: 'bg-blue-100 text-blue-800',
-  confirmed: 'bg-amber-100 text-amber-800',
-  out_for_delivery: 'bg-purple-100 text-purple-800',
-  delivered: 'bg-emerald-100 text-emerald-800',
+  received: 'bg-cream-200 text-brand-900',
+  confirmed: 'bg-brand-400 text-brand-950',
+  out_for_delivery: 'bg-brand-600 text-cream-50',
+  delivered: 'bg-olive-600 text-cream-100',
 }
 
 const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
@@ -24,9 +27,9 @@ const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
 }
 
 const PAYMENT_STATUS_CLASS: Record<PaymentStatus, string> = {
-  paid: 'bg-emerald-100 text-emerald-800',
-  pending: 'bg-amber-100 text-amber-800',
-  due: 'bg-red-100 text-red-800',
+  paid: 'bg-olive-600 text-cream-100',
+  pending: 'bg-brand-400 text-brand-950',
+  due: 'bg-red-600 text-cream-50',
 }
 
 function formatPrice(amount: number) {
@@ -63,8 +66,13 @@ function SortableHeader({
   const href = `${basePath}?sort=${column}&dir=${nextDir}`
 
   return (
-    <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">
-      <Link href={href} className="inline-flex items-center gap-1 hover:text-gray-600">
+    <th>
+      <Link
+        href={href}
+        className={`inline-flex items-center gap-1.5 transition-colors hover:text-brand-900 ${
+          isActive ? 'text-brand-700' : ''
+        }`}
+      >
         {label}
         {isActive && <span aria-hidden="true">{dir === 'desc' ? '▼' : '▲'}</span>}
       </Link>
@@ -75,56 +83,61 @@ function SortableHeader({
 export function OrderQueueTable({ orders, sort, dir, basePath, editablePayment = false }: Props) {
   if (orders.length === 0) {
     return (
-      <div className="px-5 py-10 text-center text-gray-500">No orders here.</div>
+      <div className="px-5 py-16 text-center">
+        <p className="display-sm text-brand-900">No orders here</p>
+        <p className="mt-2 text-sm text-gray-500">Nothing matches this view yet.</p>
+      </div>
     )
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-175">
+      <table className="table-brand min-w-175">
         <thead>
-          <tr className="border-b border-gray-100">
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Café</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Order</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Status</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Payment</th>
+          <tr>
+            <th>Café</th>
+            <th>Order</th>
+            <th>Status</th>
+            <th>Payment</th>
             <SortableHeader column="total_amount" label="Total" sort={sort} dir={dir} basePath={basePath} />
             <SortableHeader column="created_at" label="Placed" sort={sort} dir={dir} basePath={basePath} />
-            <th className="py-2.5 text-right text-xs font-medium text-gray-400 uppercase tracking-wide">Actions</th>
+            <th className="text-right!">Actions</th>
           </tr>
         </thead>
         <tbody>
           {orders.map(order => {
             const shortId = order.id.split('-')[0].toUpperCase()
             return (
-              <tr key={order.id} className="border-b border-gray-100 last:border-0">
-                <td className="py-3 pr-4 text-sm font-medium text-gray-900">{order.cafe_name}</td>
-                <td className="py-3 pr-4 text-sm font-mono text-gray-600">#{shortId}</td>
-                <td className="py-3 pr-4">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_CLASS[order.status]}`}>
+              <tr key={order.id}>
+                <td className="font-display text-base text-brand-900">{order.cafe_name}</td>
+                <td className="font-mono text-xs text-gray-500">#{shortId}</td>
+                <td>
+                  <span className={`pill ${STATUS_CLASS[order.status]}`}>
                     {STATUS_LABEL[order.status]}
                   </span>
                 </td>
-                <td className="py-3 pr-4">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-600 capitalize">{order.payment_type}</span>
+                <td>
+                  <div className="flex items-center gap-2">
+                    <span className="eyebrow-sm capitalize text-gray-400">{order.payment_type}</span>
                     {editablePayment ? (
                       <PaymentStatusToggle orderId={order.id} status={order.payment_status} />
                     ) : (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${PAYMENT_STATUS_CLASS[order.payment_status]}`}>
+                      <span className={`pill ${PAYMENT_STATUS_CLASS[order.payment_status]}`}>
                         {PAYMENT_STATUS_LABEL[order.payment_status]}
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="py-3 pr-4 text-sm text-gray-900 tabular-nums">{formatPrice(order.total_amount)}</td>
-                <td className="py-3 pr-4 text-xs text-gray-400 tabular-nums whitespace-nowrap">
+                <td className="font-display text-base text-brand-900 tabular-nums">
+                  {formatPrice(order.total_amount)}
+                </td>
+                <td className="whitespace-nowrap text-xs text-gray-400 tabular-nums">
                   {formatDate(order.created_at)}
                 </td>
-                <td className="py-3 text-right">
+                <td className="text-right">
                   <Link
                     href={`/admin/orders/${order.id}`}
-                    className="text-sm text-amber-700 hover:text-amber-900 font-medium"
+                    className="font-display text-sm uppercase tracking-[0.12em] text-brand-700 transition-colors hover:text-brand-900"
                   >
                     View →
                   </Link>

@@ -33,7 +33,7 @@ export function BottomNav() {
 
   return (
     // Only visible on mobile — sm+ uses the CafeHeader nav
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 flex h-16">
+    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 bg-brand-900 pb-[env(safe-area-inset-bottom)] sm:hidden">
       {CAFE_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href
         const showBadge = href === '/orders' && cartCount > 0
@@ -42,19 +42,28 @@ export function BottomNav() {
           <Link
             key={href}
             href={href}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors ${
-              active ? 'text-amber-600' : 'text-gray-300 hover:text-gray-500'
+            aria-current={active ? 'page' : undefined}
+            className={`relative flex flex-1 flex-col items-center justify-center gap-1.5 transition-colors ${
+              active ? 'text-brand-400' : 'text-cream-200/55'
             }`}
           >
-            <div className="relative">
-              <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.5} />
+            {/* Golden cap marks the active destination. */}
+            <span
+              className={`absolute inset-x-5 top-0 h-0.5 bg-brand-400 transition-transform duration-200 ${
+                active ? 'scale-x-100' : 'scale-x-0'
+              }`}
+            />
+            <span className="relative">
+              <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
               {showBadge && (
-                <span className="absolute -top-1.5 -right-2 min-w-4 h-4 bg-amber-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-400 px-1 font-display text-[10px] leading-none text-brand-950">
                   {cartCount > 9 ? '9+' : cartCount}
                 </span>
               )}
-            </div>
-            <span className={`text-[10px] ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
+            </span>
+            <span className="font-display text-[11px] uppercase leading-none tracking-[0.16em]">
+              {label}
+            </span>
           </Link>
         )
       })}

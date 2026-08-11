@@ -43,7 +43,10 @@ beforeEach(() => {
 describe('CafePricingTable', () => {
   it('shows an empty state with no products', () => {
     render(<CafePricingTable cafeId="cafe-1" rows={[]} />)
-    expect(screen.getByText('No products in the catalog yet.')).toBeInTheDocument()
+    expect(screen.getByText('No products yet')).toBeInTheDocument()
+    expect(
+      screen.getByText('Add products to the catalog to set café pricing.'),
+    ).toBeInTheDocument()
   })
 
   it('shows base price as the effective price when there is no override', () => {

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { CafeHeader } from '@/components/cafe/cafe-header'
+import { PageMasthead } from '@/components/ui/page-masthead'
 import { ProfileForm } from '@/components/cafe/profile-form'
 import { ChangePasswordForm } from '@/components/cafe/change-password-form'
 import { SignOutButton } from '@/components/sign-out-button'
@@ -29,35 +29,47 @@ export default async function SettingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20 sm:pb-4">
+    <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
       <CafeHeader cafeName={cafe.name} />
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        <Link href="/profile" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors">
-          ← Profile
-        </Link>
-        <h1 className="text-lg font-bold text-gray-900 mb-1">Account Settings</h1>
 
-        <ProfileForm cafe={cafe} />
-        <ChangePasswordForm />
+      <div className="mx-auto max-w-2xl px-4 sm:px-6">
+        <PageMasthead
+          eyebrow="Manage"
+          title="Account Settings"
+          backHref="/profile"
+          backLabel="Account"
+        />
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Account</h2>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Phone</span>
-            <span className="text-gray-900 font-medium">{cafe.phone}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Credit</span>
-            <span className={cafe.credit_enabled ? 'text-emerald-600 font-medium' : 'text-gray-400'}>
-              {cafe.credit_enabled ? 'Enabled' : 'Not enabled'}
+        <div className="space-y-5 pt-6">
+          {/* Identity card — arched avatar echoing the packaging silhouette. */}
+          <div className="flex items-center gap-4 rounded-xl border border-cream-300 bg-white p-5">
+            <div className="arch-sm flex h-16 w-13 shrink-0 items-center justify-center bg-brand-900 font-display text-2xl text-cream-50">
+              {cafe.contact_name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-xl leading-none text-brand-900">
+                {cafe.contact_name}
+              </p>
+              <p className="eyebrow-sm mt-2 text-brand-600">Café Manager</p>
+              <p className="mt-1.5 truncate text-xs text-gray-400">{cafe.neighborhood}, Nepal</p>
+            </div>
+            <span
+              className={`pill shrink-0 ${
+                cafe.credit_enabled ? 'bg-olive-600 text-cream-100' : 'bg-cream-200 text-brand-900'
+              }`}
+            >
+              {cafe.credit_enabled ? 'Credit Enabled' : 'Pay per Order'}
             </span>
           </div>
-        </div>
 
-        <SignOutButton
-          showLabel
-          className="w-full flex items-center justify-center gap-2 bg-white rounded-2xl shadow-sm border border-gray-100 py-3.5 text-red-600 font-semibold text-sm hover:bg-red-50 active:bg-red-100 disabled:opacity-50 transition-colors [&_svg]:text-red-500"
-        />
+          <ProfileForm cafe={cafe} email={user.email ?? ''} />
+          <ChangePasswordForm />
+
+          <SignOutButton
+            showLabel
+            className="btn btn-outline btn-block border-red-200! text-red-700! hover:border-red-600! hover:bg-red-50!"
+          />
+        </div>
       </div>
     </main>
   )

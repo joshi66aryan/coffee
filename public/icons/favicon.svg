@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Sherpa Sips app icon. A simplified reading of the brand mark: at
+       16–32px the trail curve and the olive land close up into mud, so the
+       icon keeps only the two shapes that survive — the bean and Everest —
+       per the brand guide's minimum-size rule. -->
+  <rect width="512" height="512" fill="#5C2D11"/>
+  <mask id="everest">
+    <rect width="512" height="512" fill="#fff"/>
+    <path d="M154 330 L204 240 L228 272 L256 190 L292 268 L314 240 L358 330 Z" fill="#000"/>
+  </mask>
+  <ellipse cx="256" cy="256" rx="118" ry="172" fill="#EFECE1" mask="url(#everest)"/>
+</svg>

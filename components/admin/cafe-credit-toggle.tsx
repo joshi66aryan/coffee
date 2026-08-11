@@ -28,20 +28,20 @@ export function CafeCreditToggle({ cafeId, enabled }: { cafeId: string; enabled:
         aria-checked={enabled}
         onClick={handleToggle}
         disabled={isPending}
-        className={`relative w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${
-          enabled ? 'bg-emerald-600' : 'bg-gray-300'
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+          enabled ? 'bg-olive-600' : 'bg-cream-300'
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
             enabled ? 'translate-x-5' : 'translate-x-0'
           }`}
         />
       </button>
-      <span className="text-sm text-gray-700">
+      <span className="text-sm text-gray-600">
         Credit is {enabled ? 'enabled' : 'disabled'} for this café
       </span>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-700">{error}</p>}
     </div>
   )
 }

@@ -6,12 +6,12 @@ export function PushNotificationToggle({ initialSubscribed }: { initialSubscribe
   const { subscribed, error, isPending, unsupported, toggle } = usePushToggle(initialSubscribed)
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
-      <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Notifications</h2>
-      <div className="flex items-center justify-between gap-3">
+    <div className="rounded-xl border border-cream-300 bg-white p-5">
+      <h2 className="eyebrow mb-4">Notifications</h2>
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900">Order status updates</p>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="font-display text-base leading-none text-brand-900">Order status updates</p>
+          <p className="mt-2 text-xs text-gray-500">
             {unsupported
               ? 'Not supported in this browser.'
               : 'Get notified on this device when your order status changes.'}
@@ -22,18 +22,18 @@ export function PushNotificationToggle({ initialSubscribed }: { initialSubscribe
           aria-checked={subscribed}
           onClick={toggle}
           disabled={isPending || unsupported}
-          className={`relative w-11 h-6 rounded-full transition-colors disabled:opacity-50 shrink-0 ${
-            subscribed ? 'bg-amber-600' : 'bg-gray-300'
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+            subscribed ? 'bg-olive-600' : 'bg-cream-300'
           }`}
         >
           <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+            className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
               subscribed ? 'translate-x-5' : 'translate-x-0'
             }`}
           />
         </button>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-3 text-xs text-red-700">{error}</p>}
     </div>
   )
 }

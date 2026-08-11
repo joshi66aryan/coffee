@@ -2,63 +2,40 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { sendOtp, verifyOtp, signInWithEmail, signUpWithEmail } from '@/lib/cafe/actions'
-import { toNepalPhone } from '@/lib/cafe/phone'
+import Link from 'next/link'
+import { Eye, EyeOff, MailCheck } from 'lucide-react'
+import { signInWithEmail, signUpWithEmail } from '@/lib/cafe/actions'
+import { createClient } from '@/lib/supabase/client'
+import { PasswordStrengthMeter } from '@/components/cafe/password-strength-meter'
+import logger from '@/lib/logger'
 
-type Tab = 'phone' | 'email'
 type EmailMode = 'signin' | 'signup'
 
-export function LoginForm() {
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" aria-hidden="true">
+      <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47a5.53 5.53 0 01-2.4 3.63v3h3.87c2.27-2.09 3.58-5.17 3.58-8.82z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.07 7.94-2.91l-3.87-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.11A11.998 11.998 0 0012 24z" />
+      <path fill="#FBBC05" d="M5.27 14.28A7.2 7.2 0 014.9 12c0-.79.14-1.56.37-2.28V6.61H1.27A11.998 11.998 0 000 12c0 1.94.46 3.77 1.27 5.39l4-3.11z" />
+      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.27 6.61l4 3.11C6.22 6.86 8.87 4.75 12 4.75z" />
+    </svg>
+  )
+}
+
+export function LoginForm({ initialError }: { initialError?: string } = {}) {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('phone')
 
-  // Phone state
-  const [step, setStep] = useState<'phone' | 'otp'>('phone')
-  const [phoneInput, setPhoneInput] = useState('')
-  const [formattedPhone, setFormattedPhone] = useState('')
-  const [otp, setOtp] = useState('')
-
-  // Email state
   const [emailMode, setEmailMode] = useState<EmailMode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
-  const [error, setError] = useState('')
+  const [error, setError] = useState(initialError ?? '')
   const [isPending, startTransition] = useTransition()
+  const [isGooglePending, setIsGooglePending] = useState(false)
 
-  function switchTab(t: Tab) {
-    setTab(t)
-    setError('')
-  }
-
-  // --- Phone handlers ---
-  function handlePhoneSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    const formatted = toNepalPhone(phoneInput)
-    setFormattedPhone(formatted)
-
-    startTransition(async () => {
-      const result = await sendOtp(formatted)
-      if (result.error) { setError(result.error); return }
-      setStep('otp')
-    })
-  }
-
-  function handleOtpSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-
-    startTransition(async () => {
-      const result = await verifyOtp(formattedPhone, otp)
-      if (result.error) { setError(result.error); return }
-      if (result.redirect) router.push(result.redirect)
-    })
-  }
-
-  // --- Email handlers ---
   function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -72,206 +49,160 @@ export function LoginForm() {
     })
   }
 
-  return (
-    <div>
-      {/* Tab switcher */}
-      <div className="flex rounded-lg border border-gray-200 p-1 mb-5 gap-1">
+  async function handleGoogleSignIn() {
+    setError('')
+    setIsGooglePending(true)
+    const supabase = createClient()
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (oauthError) {
+      logger.error('Google sign-in failed', { msg: oauthError.message })
+      setError('Could not start Google sign-in. Please try again.')
+      setIsGooglePending(false)
+    }
+    // On success the browser is redirected to Google — no further action here.
+  }
+
+  if (awaitingConfirm) {
+    return (
+      <div className="animate-fade-in text-center">
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+          <MailCheck className="h-6 w-6" aria-hidden="true" />
+        </span>
+        <h1 className="display-md mt-6 text-brand-900">Check your inbox</h1>
+        <p className="mt-3 text-sm leading-relaxed text-gray-500">
+          We sent a confirmation link to <strong className="text-brand-900">{email}</strong>.
+          Click it to activate your account.
+        </p>
         <button
           type="button"
-          onClick={() => switchTab('phone')}
-          className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-            tab === 'phone'
-              ? 'bg-amber-600 text-white'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          onClick={() => { setAwaitingConfirm(false); setEmailMode('signin') }}
+          className="btn btn-outline btn-sm mt-7"
         >
-          Phone
-        </button>
-        <button
-          type="button"
-          onClick={() => switchTab('email')}
-          className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-            tab === 'email'
-              ? 'bg-amber-600 text-white'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Email
+          Back to sign in
         </button>
       </div>
+    )
+  }
 
-      {/* Phone tab */}
-      {tab === 'phone' && step === 'phone' && (
-        <form onSubmit={handlePhoneSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-              Phone Number
-            </label>
-            <div className="flex">
-              <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm select-none">
-                +977
-              </span>
-              <input
-                id="phone"
-                type="tel"
-                value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
-                placeholder="98XXXXXXXX"
-                required
-                autoFocus
-                className="flex-1 block w-full px-3 py-3 rounded-r-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-base"
-              />
-            </div>
-          </div>
+  return (
+    <div className="animate-rise">
+      <p className="eyebrow">{emailMode === 'signin' ? 'Welcome back' : 'Join the trail'}</p>
+      <h1 className="display-lg mt-3 text-brand-900">
+        {emailMode === 'signin' ? 'Sign in' : 'Create account'}
+      </h1>
+      <p className="mt-3 text-sm text-gray-500">
+        {emailMode === 'signin'
+          ? 'Access your café’s catalog, pricing and order history.'
+          : 'Set up your café account to start ordering.'}
+      </p>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="rule mt-7" />
 
-          <button
-            type="submit"
-            disabled={isPending || !phoneInput}
-            className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isPending ? 'Sending…' : 'Send Code'}
-          </button>
-        </form>
-      )}
-
-      {tab === 'phone' && step === 'otp' && (
-        <form onSubmit={handleOtpSubmit} className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Enter the 6-digit code sent to <strong>{formattedPhone}</strong>
-          </p>
-
-          <div>
-            <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
-              Verification Code
-            </label>
-            <input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              pattern="\d{6}"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-              placeholder="000000"
-              required
-              autoFocus
-              className="block w-full px-3 py-3 border border-gray-300 rounded-lg text-gray-900 text-center text-2xl tracking-[0.5em] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-            />
-          </div>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={isPending || otp.length !== 6}
-            className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isPending ? 'Verifying…' : 'Verify Code'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setStep('phone'); setOtp(''); setError('') }}
-            className="w-full text-sm text-gray-500 hover:text-gray-700 py-1"
-          >
-            Use a different number
-          </button>
-        </form>
-      )}
-
-      {/* Email tab — awaiting confirmation */}
-      {tab === 'email' && awaitingConfirm && (
-        <div className="text-center space-y-3 py-2">
-          <p className="text-sm text-gray-700">
-            Check your inbox at <strong>{email}</strong> and click the confirmation link to activate your account.
-          </p>
-          <button
-            type="button"
-            onClick={() => { setAwaitingConfirm(false); setEmailMode('signin') }}
-            className="text-sm text-amber-600 hover:text-amber-700"
-          >
-            Back to sign in
-          </button>
+      <form onSubmit={handleEmailSubmit} className="mt-7 space-y-5">
+        <div>
+          <label htmlFor="email" className="field-label">Email</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@yourcafe.com"
+            required
+            autoFocus
+            className="field"
+          />
         </div>
-      )}
 
-      {/* Email tab */}
-      {tab === 'email' && !awaitingConfirm && (
-        <form onSubmit={handleEmailSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
+        <div>
+          <label htmlFor="password" className="field-label">Password</label>
+          <div className="relative">
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
-              autoFocus
-              className="block w-full px-3 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-base"
+              minLength={emailMode === 'signup' ? 10 : 1}
+              className="field pr-11"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-400 transition-colors hover:text-brand-900"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword
+                ? <EyeOff className="h-4.5 w-4.5" aria-hidden="true" />
+                : <Eye className="h-4.5 w-4.5" aria-hidden="true" />}
+            </button>
           </div>
+          {emailMode === 'signup' && <PasswordStrengthMeter password={password} />}
+        </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={8}
-                className="block w-full px-3 py-3 pr-10 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-base"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
+        {emailMode === 'signup' && (
+          <label className="flex items-start gap-2.5 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded-sm border-cream-400 accent-brand-900"
+            />
+            <span>
+              I agree with the{' '}
+              <Link href="/terms" target="_blank" className="font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-900">
+                Terms &amp; Conditions
+              </Link>
+            </span>
+          </label>
+        )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" className="border-l-2 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
 
-          <button
-            type="submit"
-            disabled={isPending || !email || !password}
-            className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isPending
-              ? emailMode === 'signin' ? 'Signing in…' : 'Creating account…'
-              : emailMode === 'signin' ? 'Sign in' : 'Create account'}
-          </button>
+        <button
+          type="submit"
+          disabled={isPending || !email || !password || (emailMode === 'signup' && !agreedToTerms)}
+          className="btn btn-primary btn-block btn-lg"
+        >
+          {isPending
+            ? emailMode === 'signin' ? 'Signing in…' : 'Creating account…'
+            : emailMode === 'signin' ? 'Sign in' : 'Create account'}
+        </button>
+      </form>
 
-          <button
-            type="button"
-            onClick={() => { setEmailMode(emailMode === 'signin' ? 'signup' : 'signin'); setError('') }}
-            className="w-full text-sm text-gray-500 hover:text-gray-700 py-1"
-          >
-            {emailMode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-          </button>
-        </form>
-      )}
+      <div className="my-7 flex items-center gap-4">
+        <span className="h-px flex-1 bg-cream-300" />
+        <span className="eyebrow-sm text-gray-400">Or</span>
+        <span className="h-px flex-1 bg-cream-300" />
+      </div>
+
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={isGooglePending}
+        className="btn btn-outline btn-block"
+      >
+        <GoogleIcon />
+        Continue with Google
+      </button>
+
+      <button
+        type="button"
+        onClick={() => { setEmailMode(emailMode === 'signin' ? 'signup' : 'signin'); setError('') }}
+        className="mt-7 w-full text-center text-sm text-gray-500 transition-colors hover:text-brand-900"
+      >
+        {emailMode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+        <span className="font-semibold text-brand-700 underline underline-offset-2">
+          {emailMode === 'signin' ? 'Sign up' : 'Sign in'}
+        </span>
+      </button>
     </div>
   )
 }

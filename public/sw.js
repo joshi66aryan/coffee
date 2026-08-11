@@ -4,9 +4,18 @@
 // unreachable. There's no build-time precache manifest (no Workbox/next-pwa
 // — see CLAUDE.md), so this only caches what it's told to and what gets
 // requested during normal use; it's not a full precache of every route.
-const CACHE_VERSION = 'sherpa-sips-v1'
+// Bump this whenever a precached asset's *content* changes (most often the
+// offline page) — activate only evicts caches whose name differs, so without
+// a bump every already-installed client keeps serving the stale precache.
+const CACHE_VERSION = 'sherpa-sips-v5'
 const OFFLINE_URL = '/offline'
 const PRECACHE_URLS = [OFFLINE_URL, '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
+
+// Turbopack's dev server reuses /_next/static/ paths across edits (no
+// content hash per build like production), so cache-first there would keep
+// serving a chunk from before your last edit instead of picking up Fast
+// Refresh output — causing hydration mismatches against the (always live) SSR.
+const IS_LOCAL_DEV = ['localhost', '127.0.0.1'].includes(self.location.hostname)
 
 // Take over immediately on update instead of waiting for every open tab to
 // close first — this file changes during active development, and a stale
@@ -43,8 +52,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Hashed build assets and app icons don't change under a given deploy —
-  // cache-first keeps repeat visits fast and available offline.
+  // cache-first keeps repeat visits fast and available offline. Skipped for
+  // /_next/static/ in local dev — see IS_LOCAL_DEV above.
   const path = new URL(request.url).pathname
+  if (path.startsWith('/_next/static/') && IS_LOCAL_DEV) return
   if (path.startsWith('/_next/static/') || path.startsWith('/icons/')) {
     event.respondWith(
       caches.match(request).then((cached) => {

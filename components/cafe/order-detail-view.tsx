@@ -11,11 +11,11 @@ export interface OrderDetailItem {
   unit_price_at_time_of_order: number
 }
 
-const STEP_CONFIG: Record<Order['status'], { label: string; Icon: React.ElementType }> = {
-  received: { label: 'Received', Icon: Clock },
-  confirmed: { label: 'Confirmed', Icon: Package },
-  out_for_delivery: { label: 'Out for Delivery', Icon: Truck },
-  delivered: { label: 'Delivered', Icon: CheckCircle2 },
+const STEP_CONFIG: Record<Order['status'], { label: string; caption: string; Icon: React.ElementType }> = {
+  received: { label: 'Received', caption: 'Order logged at the roastery', Icon: Clock },
+  confirmed: { label: 'Confirmed', caption: 'Beans reserved and packed', Icon: Package },
+  out_for_delivery: { label: 'Out for Delivery', caption: 'On the road to your café', Icon: Truck },
+  delivered: { label: 'Delivered', caption: 'Handed over — enjoy the brew', Icon: CheckCircle2 },
 }
 
 const PAYMENT_STATUS_LABEL: Record<Order['payment_status'], string> = {
@@ -25,9 +25,9 @@ const PAYMENT_STATUS_LABEL: Record<Order['payment_status'], string> = {
 }
 
 const PAYMENT_STATUS_CLASS: Record<Order['payment_status'], string> = {
-  paid: 'bg-emerald-50 text-emerald-700',
-  pending: 'bg-amber-50 text-amber-700',
-  due: 'bg-red-50 text-red-700',
+  paid: 'bg-olive-600 text-cream-100',
+  pending: 'bg-brand-400 text-brand-950',
+  due: 'bg-red-600 text-cream-50',
 }
 
 function formatPrice(amount: number) {
@@ -68,125 +68,155 @@ export function OrderDetailView({
   const shortId = order.id.split('-')[0].toUpperCase()
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
-        <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Order</p>
-        <p className="text-2xl font-bold font-mono text-gray-900 mt-0.5">#{shortId}</p>
-        <p className="text-xs text-gray-400 mt-1">{formatDateTime(order.created_at)}</p>
+    <div className="mx-auto max-w-2xl space-y-5 px-4 pb-8 sm:px-6">
+      {/* ---- Docket header ---------------------------------------------- */}
+      <div className="rounded-xl bg-brand-900 px-5 py-5 text-cream-200 sm:px-6">
+        <p className="eyebrow-sm text-cream-200/50">Order</p>
+        <p className="mt-2 font-display text-4xl leading-none tracking-wider text-brand-400">
+          #{shortId}
+        </p>
+        <p className="mt-2.5 text-xs text-cream-200/50">{formatDateTime(order.created_at)}</p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Status</p>
-        <ol>
+      {/* ---- The climb --------------------------------------------------- */}
+      <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+        <div className="border-b border-cream-300 bg-cream-100 px-5 py-3.5">
+          <h2 className="display-sm text-brand-900">Delivery Progress</h2>
+        </div>
+
+        <ol className="px-5 py-5">
           {ORDER_STATUS_STEPS.map((step, index) => {
-            const { label, Icon } = STEP_CONFIG[step]
+            const { label, caption, Icon } = STEP_CONFIG[step]
             const isComplete = index < currentStep
             const isCurrent = index === currentStep
             const isLast = index === ORDER_STATUS_STEPS.length - 1
             const isActive = isComplete || isCurrent
+
             return (
-              <li key={step} className="flex gap-3">
+              <li key={step} className="flex gap-4">
+                {/* The trail: filled behind you, faint ahead. */}
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      isActive ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-300'
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
+                      isCurrent
+                        ? 'bg-brand-400 text-brand-950'
+                        : isComplete
+                        ? 'bg-brand-900 text-cream-50'
+                        : 'bg-cream-200 text-brand-900/30'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="h-4 w-4" />
                   </div>
                   {!isLast && (
                     <div
-                      className={`w-0.5 flex-1 min-h-6 ${
-                        isComplete ? 'bg-amber-600' : 'bg-gray-100'
-                      }`}
+                      className={`min-h-8 w-0.5 flex-1 ${isComplete ? 'bg-brand-900' : 'bg-cream-200'}`}
                     />
                   )}
                 </div>
-                <div className="pb-6">
+
+                <div className={isLast ? 'pb-0 pt-1.5' : 'pb-7 pt-1.5'}>
                   <p
-                    className={`text-sm font-semibold ${
-                      isActive ? 'text-gray-900' : 'text-gray-300'
+                    className={`font-display text-base leading-none ${
+                      isActive ? 'text-brand-900' : 'text-gray-300'
                     }`}
                   >
                     {label}
                   </p>
-                  {isCurrent && (
-                    <p className="text-xs text-amber-600 font-medium mt-0.5">Current status</p>
-                  )}
+                  <p
+                    className={`mt-2 text-xs ${
+                      isCurrent ? 'font-semibold text-brand-600' : 'text-gray-400'
+                    }`}
+                  >
+                    {isCurrent ? 'Current status' : caption}
+                  </p>
                 </div>
               </li>
             )
           })}
         </ol>
-      </div>
+      </section>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-            Items ({items.length})
-          </p>
+      {/* ---- Items -------------------------------------------------------- */}
+      <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+        <div className="flex items-baseline justify-between gap-3 border-b border-cream-300 bg-cream-100 px-5 py-3.5">
+          <h2 className="display-sm text-brand-900">Items</h2>
+          <span className="eyebrow-sm text-gray-400">{items.length}</span>
         </div>
-        <div className="divide-y divide-gray-100">
+
+        <ul className="divide-y divide-cream-200">
           {items.map(item => (
-            <div key={item.id} className="px-4 py-3.5 flex items-center justify-between gap-3">
+            <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="truncate font-display text-base leading-none text-brand-900">
+                  {item.name}
+                </p>
+                <p className="mt-2 text-xs text-gray-500">
                   {item.quantity} {item.unit} × {formatPrice(item.unit_price_at_time_of_order)}
                 </p>
               </div>
-              <p className="text-sm font-bold text-gray-900 shrink-0">
+              <p className="shrink-0 font-display text-base text-brand-900 tabular-nums">
                 {formatPrice(item.quantity * item.unit_price_at_time_of_order)}
               </p>
-            </div>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </section>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-100">
-        <div className="px-4 py-3.5 flex justify-between items-center">
-          <span className="text-sm text-gray-500">Payment</span>
-          <span className="text-sm font-medium text-gray-900 capitalize">{order.payment_type}</span>
-        </div>
-        <div className="px-4 py-3.5 flex justify-between items-center">
-          <span className="text-sm text-gray-500">Payment Status</span>
-          <span
-            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${PAYMENT_STATUS_CLASS[order.payment_status]}`}
-          >
-            {PAYMENT_STATUS_LABEL[order.payment_status]}
-          </span>
-        </div>
-        {order.delivery_date && (
-          <div className="px-4 py-3.5 flex justify-between items-center">
-            <span className="text-sm text-gray-500">Delivery</span>
-            <span className="text-sm font-medium text-gray-900">
-              {formatDeliveryDate(order.delivery_date)}
-            </span>
+      {/* ---- Summary ------------------------------------------------------ */}
+      <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+        <dl className="divide-y divide-cream-200">
+          <div className="flex items-center justify-between px-5 py-3.5">
+            <dt className="eyebrow-sm text-gray-400">Payment</dt>
+            <dd className="font-display text-base capitalize text-brand-900">{order.payment_type}</dd>
           </div>
-        )}
-        {order.invoice_number && (
-          <div className="px-4 py-3.5 flex justify-between items-center">
-            <span className="text-sm text-gray-500">Invoice</span>
-            {invoice ? (
-              <a
-                href={invoice.downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-mono text-amber-700 hover:text-amber-800"
-              >
-                {order.invoice_number}
-                <Download className="w-3.5 h-3.5" />
-              </a>
-            ) : (
-              <span className="text-sm font-mono text-gray-900">{order.invoice_number}</span>
-            )}
+
+          <div className="flex items-center justify-between px-5 py-3.5">
+            <dt className="eyebrow-sm text-gray-400">Payment Status</dt>
+            <dd>
+              <span className={`pill ${PAYMENT_STATUS_CLASS[order.payment_status]}`}>
+                {PAYMENT_STATUS_LABEL[order.payment_status]}
+              </span>
+            </dd>
           </div>
-        )}
-        <div className="px-4 py-3.5 flex justify-between items-center">
-          <span className="text-sm font-semibold text-gray-900">Total</span>
-          <span className="text-base font-bold text-amber-900">{formatPrice(order.total_amount)}</span>
-        </div>
-      </div>
+
+          {order.delivery_date && (
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <dt className="eyebrow-sm text-gray-400">Delivery</dt>
+              <dd className="font-display text-base text-brand-900">
+                {formatDeliveryDate(order.delivery_date)}
+              </dd>
+            </div>
+          )}
+
+          {order.invoice_number && (
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <dt className="eyebrow-sm text-gray-400">Invoice</dt>
+              <dd>
+                {invoice ? (
+                  <a
+                    href={invoice.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 font-mono text-sm text-brand-700 underline underline-offset-2 hover:text-brand-900"
+                  >
+                    {order.invoice_number}
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <span className="font-mono text-sm text-brand-900">{order.invoice_number}</span>
+                )}
+              </dd>
+            </div>
+          )}
+
+          <div className="flex items-baseline justify-between bg-cream-100 px-5 py-4">
+            <dt className="eyebrow text-gray-500">Total</dt>
+            <dd className="font-display text-2xl leading-none text-brand-900 tabular-nums">
+              {formatPrice(order.total_amount)}
+            </dd>
+          </div>
+        </dl>
+      </section>
     </div>
   )
 }

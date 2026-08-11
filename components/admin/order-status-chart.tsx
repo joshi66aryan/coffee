@@ -11,13 +11,14 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   delivered: 'Delivered',
 }
 
-// Ordinal ramp (light -> dark) tracking the received -> delivered stage sequence,
-// not an arbitrary categorical assignment.
+// Ordinal ramp (light -> dark) tracking the received -> delivered stage
+// sequence, not an arbitrary categorical assignment. Climbs the brand palette
+// from cream foothills to the olive summit, matching the order queue badges.
 const STATUS_BAR_CLASS: Record<OrderStatus, string> = {
-  received: 'bg-[#86b6ef]',
-  confirmed: 'bg-[#6da7ec]',
-  out_for_delivery: 'bg-[#2a78d6]',
-  delivered: 'bg-[#1c5cab]',
+  received: 'bg-cream-300',
+  confirmed: 'bg-brand-400',
+  out_for_delivery: 'bg-brand-600',
+  delivered: 'bg-olive-600',
 }
 
 const CHART_HEIGHT = 160
@@ -43,9 +44,11 @@ export function OrderStatusChart({ counts }: { counts: StatusCount[] }) {
               onPointerEnter={() => setHovered(status)}
               onPointerLeave={() => setHovered(null)}
             >
-              <span className="text-sm font-semibold text-gray-900 tabular-nums mb-1">{count}</span>
+              <span className="mb-1.5 font-display text-lg leading-none text-brand-900 tabular-nums">
+                {count}
+              </span>
               <div
-                className={`w-full max-w-12 rounded-t-[4px] transition-opacity ${
+                className={`w-full max-w-12 rounded-t-sm transition-opacity ${
                   hovered === status ? 'opacity-80' : ''
                 } ${STATUS_BAR_CLASS[status]}`}
                 style={{ height: `${Math.max(heightPct, 3)}%` }}
@@ -56,7 +59,7 @@ export function OrderStatusChart({ counts }: { counts: StatusCount[] }) {
       </div>
       <div className="flex items-start justify-between gap-4 mt-2">
         {counts.map(({ status }) => (
-          <span key={status} className="flex-1 text-center text-xs text-gray-400 leading-tight">
+          <span key={status} className="eyebrow-sm flex-1 text-center leading-tight text-gray-400">
             {STATUS_LABEL[status]}
           </span>
         ))}

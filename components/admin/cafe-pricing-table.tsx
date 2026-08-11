@@ -40,11 +40,11 @@ function PriceRow({ cafeId, row }: { cafeId: string; row: CafeProductPricingRow 
   }
 
   return (
-    <tr className="border-b border-gray-100 last:border-0">
-      <td className="py-3 pr-4 text-sm font-medium text-gray-900">{row.name}</td>
-      <td className="py-3 pr-4 text-xs text-gray-400">{row.category}</td>
-      <td className="py-3 pr-4 text-sm text-gray-600 tabular-nums">{formatPrice(row.base_price)}</td>
-      <td className="py-3 pr-4">
+    <tr>
+      <td className="font-display text-base text-brand-900">{row.name}</td>
+      <td className="eyebrow-sm capitalize text-gray-400">{row.category}</td>
+      <td className="text-gray-600 tabular-nums">{formatPrice(row.base_price)}</td>
+      <td>
         <div className="flex items-center gap-2">
           <input
             aria-label={`Custom price for ${row.name}`}
@@ -59,14 +59,14 @@ function PriceRow({ cafeId, row }: { cafeId: string; row: CafeProductPricingRow 
             }}
             onBlur={e => commit(e.target.value)}
             disabled={isPending}
-            className="w-24 px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+            className="field w-24 px-2.5! py-1.5! text-sm!"
           />
-          {isPending && <span className="text-xs text-gray-400">Saving…</span>}
-          {saved && !isPending && <span className="text-xs text-emerald-600">Saved</span>}
-          {error && <span className="text-xs text-red-600">{error}</span>}
+          {isPending && <span className="eyebrow-sm text-gray-400">Saving…</span>}
+          {saved && !isPending && <span className="eyebrow-sm text-olive-500">Saved</span>}
+          {error && <span className="text-xs text-red-700">{error}</span>}
         </div>
       </td>
-      <td className="py-3 text-sm font-semibold text-gray-900 tabular-nums">
+      <td className="font-display text-base text-brand-900 tabular-nums">
         {formatPrice(resolveEffectivePrice(row.base_price, row.custom_price))}
       </td>
     </tr>
@@ -81,19 +81,24 @@ export function CafePricingTable({
   rows: CafeProductPricingRow[]
 }) {
   if (rows.length === 0) {
-    return <div className="py-10 text-center text-gray-500">No products in the catalog yet.</div>
+    return (
+      <div className="px-5 py-14 text-center">
+        <p className="display-sm text-brand-900">No products yet</p>
+        <p className="mt-2 text-sm text-gray-500">Add products to the catalog to set café pricing.</p>
+      </div>
+    )
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-150">
+      <table className="table-brand min-w-150">
         <thead>
-          <tr className="border-b border-gray-100">
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Product</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Category</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Base Price</th>
-            <th className="py-2.5 pr-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Custom Price</th>
-            <th className="py-2.5 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Effective</th>
+          <tr>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Base Price</th>
+            <th>Custom Price</th>
+            <th>Effective</th>
           </tr>
         </thead>
         <tbody>

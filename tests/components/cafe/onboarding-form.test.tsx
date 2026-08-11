@@ -24,19 +24,35 @@ function fillForm(overrides: Partial<Record<string, string>> = {}) {
   const defaults = {
     'Café Name':         'Himalayan Brew',
     'Your Name':         'Ramesh Shrestha',
+    'Phone Number':      '9841234567',
     'Neighborhood':      'Thamel',
     'Delivery Address':  'Ward 26, Thamel, Kathmandu',
   }
   return { ...defaults, ...overrides }
 }
 
+async function fillAndSubmit(fields: Record<string, string>) {
+  await userEvent.type(screen.getByLabelText(/café name/i), fields['Café Name'])
+  await userEvent.type(screen.getByLabelText(/your name/i), fields['Your Name'])
+  await userEvent.type(screen.getByLabelText(/phone number/i), fields['Phone Number'])
+  await userEvent.type(screen.getByLabelText(/neighborhood/i), fields['Neighborhood'])
+  await userEvent.type(screen.getByLabelText(/delivery address/i), fields['Delivery Address'])
+  await userEvent.click(screen.getByRole('button', { name: /submit application/i }))
+}
+
 describe('OnboardingForm', () => {
-  it('renders all four required fields', () => {
+  it('renders all five required fields', () => {
     render(<OnboardingForm />)
     expect(screen.getByLabelText(/café name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/your name/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/neighborhood/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/delivery address/i)).toBeInTheDocument()
+  })
+
+  it('shows the +977 prefix on the phone field', () => {
+    render(<OnboardingForm />)
+    expect(screen.getByText('+977')).toBeInTheDocument()
   })
 
   it('renders the submit button', () => {
@@ -48,13 +64,7 @@ describe('OnboardingForm', () => {
     mockCreate.mockResolvedValue({ redirect: '/pending' })
     render(<OnboardingForm />)
 
-    const fields = fillForm()
-    await userEvent.type(screen.getByLabelText(/café name/i), fields['Café Name'])
-    await userEvent.type(screen.getByLabelText(/your name/i), fields['Your Name'])
-    await userEvent.type(screen.getByLabelText(/neighborhood/i), fields['Neighborhood'])
-    await userEvent.type(screen.getByLabelText(/delivery address/i), fields['Delivery Address'])
-
-    await userEvent.click(screen.getByRole('button', { name: /submit application/i }))
+    await fillAndSubmit(fillForm())
 
     await waitFor(() => {
       expect(mockCreate).toHaveBeenCalledOnce()
@@ -66,13 +76,7 @@ describe('OnboardingForm', () => {
     mockCreate.mockResolvedValue({ error: 'Failed to save your profile. Please try again.' })
     render(<OnboardingForm />)
 
-    const fields = fillForm()
-    await userEvent.type(screen.getByLabelText(/café name/i), fields['Café Name'])
-    await userEvent.type(screen.getByLabelText(/your name/i), fields['Your Name'])
-    await userEvent.type(screen.getByLabelText(/neighborhood/i), fields['Neighborhood'])
-    await userEvent.type(screen.getByLabelText(/delivery address/i), fields['Delivery Address'])
-
-    await userEvent.click(screen.getByRole('button', { name: /submit application/i }))
+    await fillAndSubmit(fillForm())
 
     await waitFor(() => {
       expect(screen.getByText(/failed to save your profile/i)).toBeInTheDocument()
@@ -86,13 +90,7 @@ describe('OnboardingForm', () => {
     mockCreate.mockReturnValue(new Promise((r) => { resolve = r }))
     render(<OnboardingForm />)
 
-    const fields = fillForm()
-    await userEvent.type(screen.getByLabelText(/café name/i), fields['Café Name'])
-    await userEvent.type(screen.getByLabelText(/your name/i), fields['Your Name'])
-    await userEvent.type(screen.getByLabelText(/neighborhood/i), fields['Neighborhood'])
-    await userEvent.type(screen.getByLabelText(/delivery address/i), fields['Delivery Address'])
-
-    await userEvent.click(screen.getByRole('button', { name: /submit application/i }))
+    await fillAndSubmit(fillForm())
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /submitting/i })).toBeDisabled()

@@ -48,13 +48,13 @@ export function OrderFilters() {
   }
 
   return (
-    <div className="flex items-center gap-3 mb-4 flex-wrap">
+    <div className="mb-6 flex flex-wrap items-center gap-3">
       <select
         aria-label="Filter by status"
         value={status}
         onChange={e => updateParam('status', e.target.value)}
         disabled={isPending}
-        className="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+        className="field w-auto py-2! text-sm!"
       >
         <option value="">All statuses</option>
         {ORDER_STATUSES.map(s => (
@@ -64,27 +64,27 @@ export function OrderFilters() {
         ))}
       </select>
 
-      <label className="flex items-center gap-1.5 text-sm text-gray-500">
-        From
+      <label className="flex items-center gap-2">
+        <span className="eyebrow-sm text-gray-400">From</span>
         <input
           aria-label="From date"
           type="date"
           value={from}
           onChange={e => updateParam('from', e.target.value)}
           disabled={isPending}
-          className="px-2 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+          className="field w-auto py-2! text-sm!"
         />
       </label>
 
-      <label className="flex items-center gap-1.5 text-sm text-gray-500">
-        To
+      <label className="flex items-center gap-2">
+        <span className="eyebrow-sm text-gray-400">To</span>
         <input
           aria-label="To date"
           type="date"
           value={to}
           onChange={e => updateParam('to', e.target.value)}
           disabled={isPending}
-          className="px-2 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+          className="field w-auto py-2! text-sm!"
         />
       </label>
 
@@ -93,7 +93,7 @@ export function OrderFilters() {
           type="button"
           onClick={clearFilters}
           disabled={isPending}
-          className="text-sm text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
+          className="btn btn-ghost btn-sm"
         >
           Clear filters
         </button>

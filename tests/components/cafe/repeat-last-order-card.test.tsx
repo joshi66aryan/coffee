@@ -78,4 +78,33 @@ describe('RepeatLastOrderCard', () => {
 
     await waitFor(() => expect(screen.getByText(/order #abcd1234/i)).toBeInTheDocument())
   })
+
+  it('when dismissible=false, shows no Dismiss button and ignores a dismissal recorded elsewhere', async () => {
+    localStorage.setItem('sherpa-buy-again-dismissed', 'ABCD1234')
+    render(<RepeatLastOrderCard shortId="ABCD1234" total={2500} items={items} dismissible={false} />)
+
+    await waitFor(() => expect(screen.getByText(/order #abcd1234/i)).toBeInTheDocument())
+    expect(screen.queryByLabelText('Dismiss')).not.toBeInTheDocument()
+  })
+
+  it('when dismissible=false, never writes to the dismissal key', async () => {
+    render(<RepeatLastOrderCard shortId="ABCD1234" total={2500} items={items} dismissible={false} />)
+
+    await waitFor(() => expect(screen.getByText(/order #abcd1234/i)).toBeInTheDocument())
+    expect(localStorage.getItem('sherpa-buy-again-dismissed')).toBeNull()
+  })
+
+  it('shows the "Buy Again" section heading by default', async () => {
+    render(<RepeatLastOrderCard shortId="ABCD1234" total={2500} items={items} />)
+    await waitFor(() => expect(screen.getByText(/order #abcd1234/i)).toBeInTheDocument())
+    expect(screen.getByRole('heading', { name: /buy again/i })).toBeInTheDocument()
+  })
+
+  it('hides the section heading when showHeader=false, keeping the in-card label', async () => {
+    render(<RepeatLastOrderCard shortId="ABCD1234" total={2500} items={items} showHeader={false} />)
+    await waitFor(() => expect(screen.getByText(/order #abcd1234/i)).toBeInTheDocument())
+    expect(screen.queryByRole('heading', { name: /buy again/i })).not.toBeInTheDocument()
+    // The card's own "Buy Again" label (next to the icon) is not a heading — still present.
+    expect(screen.getByText('Buy Again')).toBeInTheDocument()
+  })
 })

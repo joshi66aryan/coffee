@@ -18,9 +18,9 @@ const STOCK_LABEL: Record<StockStatus, string> = {
 }
 
 const STOCK_CLASS: Record<StockStatus, string> = {
-  in_stock: 'bg-green-100 text-green-800',
-  low: 'bg-yellow-100 text-yellow-800',
-  out_of_stock: 'bg-red-100 text-red-800',
+  in_stock: 'bg-olive-600 text-cream-100',
+  low: 'bg-brand-400 text-brand-950',
+  out_of_stock: 'bg-cream-300 text-brand-900',
 }
 
 export function StockToggle({ id, status }: { id: string; status: StockStatus }) {
@@ -37,7 +37,7 @@ export function StockToggle({ id, status }: { id: string; status: StockStatus })
       onClick={toggle}
       disabled={isPending}
       title="Click to cycle stock status"
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer disabled:opacity-50 transition-opacity ${STOCK_CLASS[status]}`}
+      className={`pill cursor-pointer transition-opacity hover:opacity-80 disabled:opacity-50 ${STOCK_CLASS[status]}`}
     >
       {isPending ? '…' : STOCK_LABEL[status]}
     </button>
@@ -64,7 +64,7 @@ export function DeleteProductButton({ id, name }: { id: string; name: string }) 
     <button
       onClick={handleDelete}
       disabled={isPending}
-      className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
+      className="font-display text-sm uppercase tracking-[0.12em] text-red-700 transition-colors hover:text-red-900 disabled:opacity-50"
     >
       {isPending ? 'Deleting…' : 'Delete'}
     </button>

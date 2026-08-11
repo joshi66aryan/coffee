@@ -7,6 +7,7 @@ import { parsePaymentFilter, PAYMENT_FILTERS, type PaymentFilter } from '@/lib/a
 import { OrderQueueTable } from '@/components/admin/order-queue-table'
 import { SearchInput } from '@/components/admin/search-input'
 import { Pagination } from '@/components/ui/pagination'
+import { PageMasthead } from '@/components/ui/page-masthead'
 import { RealtimeRefresh } from '@/components/ui/realtime-refresh'
 
 export const metadata = { title: 'Payments — Admin' }
@@ -32,8 +33,8 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
     result = await getPayments({ q, filter, sort, dir, page })
   } catch {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Access denied.</p>
+      <div className="flex min-h-screen items-center justify-center bg-cream-100">
+        <p className="display-md text-brand-900">Access denied</p>
       </div>
     )
   }
@@ -42,32 +43,35 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
   const basePath = '/admin/payments'
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-cream-100 pb-16">
       <RealtimeRefresh table="orders" />
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Rs. {outstandingTotal.toLocaleString('en-IN')} outstanding across all cafés
-            </p>
-          </div>
-          <Suspense>
-            <SearchInput placeholder="Search by café name…" />
-          </Suspense>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <PageMasthead
+          eyebrow="Ledger"
+          title="Payments"
+          action={
+            <Suspense>
+              <SearchInput placeholder="Search by café name…" />
+            </Suspense>
+          }
+        />
+
+        {/* Outstanding balance carried as a display statistic, not body copy. */}
+        <div className="mt-6 flex items-baseline justify-between gap-4 rounded-xl bg-brand-900 px-5 py-4 text-cream-200 sm:px-6">
+          <span className="eyebrow-sm text-cream-200/55">Outstanding across all cafés</span>
+          <span className="display-stat text-brand-400">
+            <span className="text-[0.5em]">Rs.</span> {outstandingTotal.toLocaleString('en-IN')}
+          </span>
         </div>
 
-        <div className="flex gap-2 mb-4">
+        <div className="my-6 flex gap-2">
           {PAYMENT_FILTERS.map(f => (
             <Link
               key={f}
               href={`${basePath}?filter=${f}`}
               aria-current={filter === f ? 'page' : undefined}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                filter === f
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              data-active={filter === f}
+              className="chip"
             >
               {FILTER_LABEL[f]}
             </Link>
@@ -75,20 +79,21 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         </div>
 
         {orders.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <p className="text-gray-500">
+          <div className="rounded-xl border border-cream-300 bg-white px-8 py-16 text-center">
+            <p className="display-md text-brand-900">
+              {q ? 'No matching orders' : filter === 'unpaid' ? 'All caught up' : 'No orders here'}
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
               {q
-                ? `No orders match "${q}".`
+                ? `Nothing matches “${q}”.`
                 : filter === 'unpaid'
-                ? 'No unpaid orders — all caught up.'
-                : 'No orders here.'}
+                ? 'Every order has been settled.'
+                : 'Orders will appear here once placed.'}
             </p>
           </div>
         ) : (
-          <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5">
-              <OrderQueueTable orders={orders} sort={sort} dir={dir} basePath={basePath} editablePayment />
-            </div>
+          <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+            <OrderQueueTable orders={orders} sort={sort} dir={dir} basePath={basePath} editablePayment />
           </section>
         )}
 
