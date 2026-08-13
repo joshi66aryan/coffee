@@ -2,11 +2,40 @@ import webpush, { WebPushError } from 'web-push'
 import { createAdminClient } from '@/lib/supabase/admin'
 import logger from '@/lib/logger'
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-)
+let vapidConfigured: boolean | null = null
+
+// Configured lazily rather than at module scope: importing this module must not
+// throw when the VAPID vars are absent, or the build fails while collecting
+// page data for any route that reaches it.
+function configureVapid(): boolean {
+  if (vapidConfigured !== null) return vapidConfigured
+
+  const subject = process.env.VAPID_SUBJECT
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const privateKey = process.env.VAPID_PRIVATE_KEY
+
+  if (!subject || !publicKey || !privateKey) {
+    logger.error('Push disabled — missing VAPID configuration', {
+      hasSubject: Boolean(subject),
+      hasPublicKey: Boolean(publicKey),
+      hasPrivateKey: Boolean(privateKey),
+    })
+    vapidConfigured = false
+    return false
+  }
+
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey)
+    vapidConfigured = true
+  } catch (err) {
+    logger.error('Push disabled — invalid VAPID configuration', {
+      msg: err instanceof Error ? err.message : String(err),
+    })
+    vapidConfigured = false
+  }
+
+  return vapidConfigured
+}
 
 export interface PushPayload {
   title: string
@@ -30,6 +59,8 @@ async function sendToSubscriptions(
     logger.warn('No push subscriptions to notify', { title: payload.title, ...context })
     return
   }
+  if (!configureVapid()) return
+
   const admin = createAdminClient()
 
   await Promise.all(

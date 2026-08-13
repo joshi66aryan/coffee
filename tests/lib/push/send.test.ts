@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const { sendNotification, WebPushErrorMock, mockFrom } = vi.hoisted(() => {
+const { sendNotification, setVapidDetails, WebPushErrorMock, mockFrom } = vi.hoisted(() => {
   class WebPushErrorMock extends Error {
     statusCode: number
     constructor(message: string, statusCode: number) {
@@ -8,11 +8,16 @@ const { sendNotification, WebPushErrorMock, mockFrom } = vi.hoisted(() => {
       this.statusCode = statusCode
     }
   }
-  return { sendNotification: vi.fn(), WebPushErrorMock, mockFrom: vi.fn() }
+  return {
+    sendNotification: vi.fn(),
+    setVapidDetails: vi.fn(),
+    WebPushErrorMock,
+    mockFrom: vi.fn(),
+  }
 })
 
 vi.mock('web-push', () => ({
-  default: { setVapidDetails: vi.fn(), sendNotification },
+  default: { setVapidDetails, sendNotification },
   WebPushError: WebPushErrorMock,
 }))
 
@@ -48,6 +53,13 @@ const subscription = { id: 'sub-1', endpoint: 'https://push.example/1', p256dh: 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubEnv('VAPID_SUBJECT', 'mailto:ops@example.com')
+  vi.stubEnv('NEXT_PUBLIC_VAPID_PUBLIC_KEY', 'public-key')
+  vi.stubEnv('VAPID_PRIVATE_KEY', 'private-key')
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 describe('sendPushToAdmins', () => {
@@ -100,6 +112,59 @@ describe('sendPushToAdmins', () => {
 
     // Only the initial select call — no follow-up delete call.
     expect(mockFrom).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('VAPID configuration', () => {
+  // Each case needs a fresh module: the configured flag is memoised.
+  async function freshModule() {
+    vi.resetModules()
+    return import('@/lib/push/send')
+  }
+
+  it('does not read VAPID config at import time', async () => {
+    vi.stubEnv('VAPID_SUBJECT', '')
+    vi.stubEnv('NEXT_PUBLIC_VAPID_PUBLIC_KEY', '')
+    vi.stubEnv('VAPID_PRIVATE_KEY', '')
+
+    await expect(freshModule()).resolves.toBeDefined()
+    expect(setVapidDetails).not.toHaveBeenCalled()
+  })
+
+  it('skips sending when the VAPID vars are missing', async () => {
+    vi.stubEnv('VAPID_SUBJECT', '')
+    const { sendPushToAdmins } = await freshModule()
+    mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
+
+    await sendPushToAdmins({ title: 't', body: 'b' })
+
+    expect(sendNotification).not.toHaveBeenCalled()
+  })
+
+  it('configures web-push once across multiple sends', async () => {
+    const { sendPushToAdmins } = await freshModule()
+    sendNotification.mockResolvedValue({ statusCode: 201, body: '', headers: {} })
+    mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
+    mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
+
+    await sendPushToAdmins({ title: 't', body: 'b' })
+    await sendPushToAdmins({ title: 't', body: 'b' })
+
+    expect(setVapidDetails).toHaveBeenCalledOnce()
+    expect(setVapidDetails).toHaveBeenCalledWith('mailto:ops@example.com', 'public-key', 'private-key')
+    expect(sendNotification).toHaveBeenCalledTimes(2)
+  })
+
+  it('skips sending when web-push rejects the config', async () => {
+    setVapidDetails.mockImplementationOnce(() => {
+      throw new Error('Vapid subject is not a url or mailto url')
+    })
+    const { sendPushToAdmins } = await freshModule()
+    mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
+
+    await sendPushToAdmins({ title: 't', body: 'b' })
+
+    expect(sendNotification).not.toHaveBeenCalled()
   })
 })
 
