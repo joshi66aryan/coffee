@@ -4,6 +4,7 @@ import { useActionState, useTransition, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createProductImageUploadUrl } from '@/lib/admin/actions'
+import { prepareProductImage } from '@/lib/admin/image-resize'
 import type { Product, StockStatus } from '@/lib/types'
 
 const STOCK_OPTIONS: { value: StockStatus; label: string }[] = [
@@ -12,8 +13,8 @@ const STOCK_OPTIONS: { value: StockStatus; label: string }[] = [
   { value: 'out_of_stock', label: 'Out of Stock' },
 ]
 
-const CATEGORIES = ['Coffee Beans', 'Sugar', 'Syrups', 'Chocolate', 'Other']
-const UNITS = ['kg', 'pack', 'bottle', 'box', 'bag', 'sachet']
+const CATEGORIES = ['Coffee Beans', 'Ground Coffee', 'Sugar', 'Syrups', 'Other']
+const UNITS = ['kg', 'half kg', 'gram', 'pack', 'bottle', 'box', 'bag', 'sachet']
 
 interface Props {
   action: (prev: { error?: string }, formData: FormData) => Promise<{ error?: string }>
@@ -43,7 +44,12 @@ export function ProductForm({ action, product, submitLabel }: Props) {
 
     // Upload immediately in the background while the user fills the rest of the form
     setIsUploading(true)
-    const result = await createProductImageUploadUrl(file.name)
+
+    // Downscaled and re-encoded here so a full-resolution camera photo never
+    // reaches Storage — see lib/admin/image-resize.ts.
+    const prepared = await prepareProductImage(file)
+
+    const result = await createProductImageUploadUrl(prepared.filename)
     if ('error' in result) {
       setUploadError(result.error)
       setIsUploading(false)
@@ -51,8 +57,8 @@ export function ProductForm({ action, product, submitLabel }: Props) {
     }
     const uploadRes = await fetch(result.signedUrl, {
       method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': file.type },
+      body: prepared.blob,
+      headers: { 'Content-Type': prepared.contentType },
     })
     setIsUploading(false)
     if (!uploadRes.ok) {

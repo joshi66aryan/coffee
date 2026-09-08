@@ -7,9 +7,29 @@
 // Bump this whenever a precached asset's *content* changes (most often the
 // offline page) — activate only evicts caches whose name differs, so without
 // a bump every already-installed client keeps serving the stale precache.
-const CACHE_VERSION = 'sherpa-sips-v5'
+const CACHE_VERSION = 'sherpa-sips-v6'
 const OFFLINE_URL = '/offline'
 const PRECACHE_URLS = [OFFLINE_URL, '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
+
+// Runtime assets live in their own cache, separate from the precache above.
+// They're content-hashed (/_next/static/) or stable (/icons/), so entries are
+// never *replaced* — each deploy introduces a new set of filenames and the
+// previous deploy's chunks would otherwise sit in storage forever, since
+// `activate` only clears caches whose *name* changed. Capping the entry count
+// and evicting oldest-first keeps that bounded; the Cache API preserves
+// insertion order, so keys()[0] is the least recently added.
+const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
+const RUNTIME_CACHE_MAX_ENTRIES = 120
+
+async function putWithLimit(request, response) {
+  const cache = await caches.open(RUNTIME_CACHE)
+  await cache.put(request, response)
+
+  const keys = await cache.keys()
+  for (let i = 0; i < keys.length - RUNTIME_CACHE_MAX_ENTRIES; i++) {
+    await cache.delete(keys[i])
+  }
+}
 
 // Turbopack's dev server reuses /_next/static/ paths across edits (no
 // content hash per build like production), so cache-first there would keep
@@ -31,10 +51,11 @@ self.addEventListener('install', (event) => {
 })
 
 self.addEventListener('activate', (event) => {
+  const keep = [CACHE_VERSION, RUNTIME_CACHE]
   event.waitUntil(
     caches
       .keys()
-      .then((names) => Promise.all(names.filter((name) => name !== CACHE_VERSION).map((name) => caches.delete(name))))
+      .then((names) => Promise.all(names.filter((name) => !keep.includes(name)).map((name) => caches.delete(name))))
       .then(() => self.clients.claim()),
   )
 })
@@ -63,7 +84,7 @@ self.addEventListener('fetch', (event) => {
         return fetch(request).then((response) => {
           if (response.ok) {
             const copy = response.clone()
-            caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy))
+            event.waitUntil(putWithLimit(request, copy))
           }
           return response
         })

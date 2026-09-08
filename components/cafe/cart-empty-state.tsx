@@ -1,31 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { EmptyState } from '@/components/cafe/empty-state'
+import { useCart } from '@/lib/cafe/use-cart'
+import { cartItemCount } from '@/lib/cafe/cart-store'
+import { useIsHydrated } from '@/lib/ui/use-is-hydrated'
 
 export function CartEmptyState() {
-  const [hasCart, setHasCart] = useState(true) // true until we know otherwise (avoids flash)
+  const hydrated = useIsHydrated()
+  const count = cartItemCount(useCart())
 
-  useEffect(() => {
-    function readCart() {
-      try {
-        const stored = localStorage.getItem('sherpa-cart')
-        const qty: Record<string, number> = stored ? JSON.parse(stored) : {}
-        const count = Object.values(qty).reduce((sum, n) => sum + n, 0)
-        setHasCart(count > 0)
-      } catch {
-        setHasCart(false)
-      }
-    }
-    readCart()
-    window.addEventListener('storage', readCart)
-    // Poll every 500ms to catch same-tab updates (e.g. CartSection removing the last item)
-    const interval = setInterval(readCart, 500)
-    return () => { window.removeEventListener('storage', readCart); clearInterval(interval) }
-  }, [])
-
-  if (hasCart) return null
+  // Stay hidden until the cart has actually been read on the client —
+  // otherwise the server's empty cart would flash "your cart is empty" at
+  // someone who has items.
+  if (!hydrated || count > 0) return null
 
   return (
     <EmptyState

@@ -37,6 +37,7 @@ function makeProduct(overrides: Partial<CatalogProduct> = {}): CatalogProduct {
     description: null,
     image_url: null,
     created_at: '2026-08-01T10:00:00.000Z',
+    archived_at: null,
     effective_price: 800,
     ...overrides,
   }
@@ -159,6 +160,49 @@ describe('CartSection', () => {
 
     await waitFor(() => expect(screen.queryByText('Vanilla Syrup')).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: /place order/i })).not.toBeDisabled()
+  })
+
+  it('removes an in-stock item via its remove button, regardless of quantity', async () => {
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 32 }))
+    mockGetCartProducts.mockResolvedValue([makeProduct()])
+
+    const { container } = render(<CartSection creditEnabled={false} />)
+
+    await waitFor(() => expect(screen.getByText('Espresso Beans')).toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Espresso Beans' }))
+
+    await waitFor(() => expect(container).toBeEmptyDOMElement())
+    expect(JSON.parse(localStorage.getItem('sherpa-cart') ?? '{}')).toEqual({})
+  })
+
+  it('clears every item from the cart after confirming', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 2, 'product-2': 3 }))
+    mockGetCartProducts.mockResolvedValue([
+      makeProduct(),
+      makeProduct({ id: 'product-2', name: 'Vanilla Syrup' }),
+    ])
+
+    const { container } = render(<CartSection creditEnabled={false} />)
+
+    await waitFor(() => expect(screen.getByText('Vanilla Syrup')).toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }))
+
+    await waitFor(() => expect(container).toBeEmptyDOMElement())
+    expect(JSON.parse(localStorage.getItem('sherpa-cart') ?? '{}')).toEqual({})
+  })
+
+  it('keeps the cart intact when clearing is not confirmed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    localStorage.setItem('sherpa-cart', JSON.stringify({ 'product-1': 2 }))
+    mockGetCartProducts.mockResolvedValue([makeProduct()])
+
+    render(<CartSection creditEnabled={false} />)
+
+    await waitFor(() => expect(screen.getByText('Espresso Beans')).toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }))
+
+    expect(screen.getByText('Espresso Beans')).toBeInTheDocument()
   })
 
   it('places the order and redirects to the confirmation page on success', async () => {

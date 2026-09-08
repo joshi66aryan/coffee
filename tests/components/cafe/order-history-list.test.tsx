@@ -50,7 +50,12 @@ describe('OrderHistoryList', () => {
       />,
     )
     expect(screen.getByText('Whole Milk')).toBeInTheDocument()
-    expect(screen.getByAltText('Whole Milk')).toHaveAttribute('src', 'https://example.com/milk.jpg')
+    // Served through next/image, so the rendered src is the optimizer URL that
+    // wraps the original rather than the original itself.
+    expect(screen.getByAltText('Whole Milk')).toHaveAttribute(
+      'src',
+      expect.stringContaining(encodeURIComponent('https://example.com/milk.jpg')),
+    )
   })
 
   it('summarizes multiple items as "+N more"', () => {

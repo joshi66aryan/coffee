@@ -1,13 +1,22 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import Image from 'next/image'
 import { Search, X, Minus, Plus } from 'lucide-react'
 import { BeanMark } from '@/components/brand/bean-mark'
+import { useCart } from '@/lib/cafe/use-cart'
+import { updateCart } from '@/lib/cafe/cart-store'
 import type { Product, CatalogProduct } from '@/lib/types'
 
 export type { CatalogProduct }
 
 const DESC_LIMIT = 60
+
+// next/image lazy-loads everything by default, which for the first row of
+// cards means the LCP image isn't even requested until layout settles. These
+// are always above the fold, so they load eagerly with a high fetch priority;
+// the rest of the catalog stays lazy.
+const EAGER_IMAGE_COUNT = 3
 
 function formatPrice(amount: number) {
   return amount.toLocaleString('en-IN')
@@ -46,7 +55,25 @@ function StockBadge({ status }: { status: Product['stock_status'] }) {
  * arch falls back to the brand's bean silhouette rather than an emoji, so an
  * unphotographed catalog still reads as Sherpa Sips.
  */
-function ProductImage({ src, alt }: { src: string | null; alt: string }) {
+// Product photos are admin uploads served straight from Supabase Storage at
+// whatever resolution they were taken at. `next/image` resizes them to the
+// grid cell actually being rendered and lazy-loads everything below the fold —
+// on a phone that is the difference between the catalog costing a few hundred
+// KB and costing several MB.
+const CARD_IMAGE_SIZES =
+  '(min-width: 1280px) 280px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'
+
+function ProductImage({
+  src,
+  alt,
+  sizes,
+  priority = false,
+}: {
+  src: string | null
+  alt: string
+  sizes: string
+  priority?: boolean
+}) {
   const [failed, setFailed] = useState(false)
 
   if (!src || failed) {
@@ -54,11 +81,13 @@ function ProductImage({ src, alt }: { src: string | null; alt: string }) {
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={src}
       alt={alt}
-      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+      fill
+      sizes={sizes}
+      priority={priority}
+      className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
       onError={() => setFailed(true)}
     />
   )
@@ -68,10 +97,13 @@ function ProductCard({
   product,
   quantity,
   onSetQty,
+  priority = false,
 }: {
   product: CatalogProduct
   quantity: number
   onSetQty: (id: string, qty: number) => void
+  /** Set on the cards above the fold — their photo is the page's LCP element. */
+  priority?: boolean
 }) {
   const [showDetails, setShowDetails] = useState(false)
   const orderable = product.stock_status !== 'out_of_stock'
@@ -98,7 +130,12 @@ function ProductCard({
         </svg>
 
         <div className="absolute inset-0 flex items-center justify-center">
-          <ProductImage src={product.image_url} alt={product.name} />
+          <ProductImage
+            src={product.image_url}
+            alt={product.name}
+            sizes={CARD_IMAGE_SIZES}
+            priority={priority}
+          />
         </div>
 
         <div className="absolute left-2.5 top-2.5">
@@ -189,7 +226,7 @@ function ProductCard({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative flex h-44 items-center justify-center overflow-hidden bg-cream-200">
-              <ProductImage src={product.image_url} alt={product.name} />
+              <ProductImage src={product.image_url} alt={product.name} sizes="(min-width: 640px) 448px, 100vw" />
               <button
                 onClick={() => setShowDetails(false)}
                 className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-brand-900 text-cream-50 transition-colors hover:bg-brand-950"
@@ -228,25 +265,12 @@ export function CatalogClient({
   products: CatalogProduct[]
   categories: string[]
 }) {
-  const [quantities, setQuantities] = useState<Record<string, number>>({})
-  const [cartLoaded, setCartLoaded] = useState(false)
+  // Reads and writes go through the shared cart store, so the header and
+  // bottom-nav badges update the moment a quantity changes instead of on
+  // their next poll.
+  const quantities = useCart()
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-
-  // Load cart after hydration — keeps server/client HTML in sync
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('sherpa-cart')
-      if (stored) setQuantities(JSON.parse(stored))
-    } catch {}
-    setCartLoaded(true)
-  }, [])
-
-  // Only persist after the initial load to avoid wiping the cart
-  useEffect(() => {
-    if (!cartLoaded) return
-    try { localStorage.setItem('sherpa-cart', JSON.stringify(quantities)) } catch {}
-  }, [quantities, cartLoaded])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -258,7 +282,7 @@ export function CatalogClient({
   }, [products, search, activeCategory])
 
   function setQty(productId: string, value: number) {
-    setQuantities(prev => {
+    updateCart(prev => {
       if (value <= 0) {
         const next = { ...prev }
         delete next[productId]
@@ -345,13 +369,14 @@ export function CatalogClient({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {filtered.map(product => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
                   quantity={quantities[product.id] ?? 0}
                   onSetQty={setQty}
+                  priority={index < EAGER_IMAGE_COUNT}
                 />
               ))}
             </div>

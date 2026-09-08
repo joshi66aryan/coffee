@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parsePaymentFilter, paymentFilterStatuses, sumOutstanding } from '@/lib/admin/payments'
+import { parsePaymentFilter, paymentFilterStatuses, sumAmounts } from '@/lib/admin/payments'
 
 describe('parsePaymentFilter', () => {
   it('defaults to unpaid when nothing is provided', () => {
@@ -31,12 +31,12 @@ describe('paymentFilterStatuses', () => {
   })
 })
 
-describe('sumOutstanding', () => {
+describe('sumAmounts', () => {
   it('sums total_amount across orders', () => {
-    expect(sumOutstanding([{ total_amount: 100 }, { total_amount: 250 }])).toBe(350)
+    expect(sumAmounts([{ total_amount: 100 }, { total_amount: 250 }])).toBe(350)
   })
 
   it('returns 0 for an empty list', () => {
-    expect(sumOutstanding([])).toBe(0)
+    expect(sumAmounts([])).toBe(0)
   })
 })

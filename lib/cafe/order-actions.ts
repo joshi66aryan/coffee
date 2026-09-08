@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import logger from '@/lib/logger'
 import { generateInvoiceForOrder } from '@/lib/invoice/generate'
 import { INVOICE_SIGNED_URL_TTL_SECONDS } from '@/lib/invoice/storage'
@@ -39,7 +40,7 @@ export async function placeOrder(input: {
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const { user, error: authError } = await getCachedUser()
   if (authError || !user) return { error: 'Not authenticated' }
 
   const { data: cafe, error: cafeError } = await supabase
@@ -60,7 +61,7 @@ export async function placeOrder(input: {
   const productIds = parsed.data.items.map(i => i.product_id)
 
   const [productsResult, pricesResult] = await Promise.all([
-    supabase.from('products').select('*').in('id', productIds),
+    supabase.from('products').select('*').is('archived_at', null).in('id', productIds),
     supabase.from('cafe_product_prices').select('*').eq('cafe_id', user.id).in('product_id', productIds),
   ])
 
@@ -160,7 +161,7 @@ export async function placeOrder(input: {
 
 export async function getInvoiceDownloadUrl(orderId: string): Promise<InvoiceDownload | null> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) return null
 
   const { data: invoice, error } = await supabase

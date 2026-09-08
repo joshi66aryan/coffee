@@ -30,7 +30,12 @@ describe('RepeatLastOrderCard', () => {
   it('shows product images when available, and a fallback icon otherwise', async () => {
     render(<RepeatLastOrderCard shortId="ABCD1234" total={500} items={items} />)
     await waitFor(() => expect(screen.getByAltText('Espresso Beans')).toBeInTheDocument())
-    expect(screen.getByAltText('Espresso Beans')).toHaveAttribute('src', 'https://example.com/beans.jpg')
+    // Served through next/image, so the rendered src is the optimizer URL that
+    // wraps the original rather than the original itself.
+    expect(screen.getByAltText('Espresso Beans')).toHaveAttribute(
+      'src',
+      expect.stringContaining(encodeURIComponent('https://example.com/beans.jpg')),
+    )
   })
 
   it('summarizes more than two items as "+N more"', async () => {

@@ -28,6 +28,7 @@ export interface Product {
   description: string | null
   image_url: string | null
   created_at: string
+  archived_at: string | null
 }
 
 export interface CafeProductPrice {

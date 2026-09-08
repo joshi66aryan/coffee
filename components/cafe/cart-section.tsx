@@ -3,10 +3,13 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, AlertTriangle, Repeat, Minus, Plus, Banknote, FileText } from 'lucide-react'
+import { Loader2, AlertTriangle, Repeat, Minus, Plus, Trash2, Banknote, FileText } from 'lucide-react'
 import { getCartProducts, getSubstituteProducts } from '@/lib/cafe/catalog-actions'
 import { placeOrder } from '@/lib/cafe/order-actions'
 import { hasOutOfStockItems, isLargeOrder } from '@/lib/cafe/cart'
+import { useCart } from '@/lib/cafe/use-cart'
+import { getCartSnapshot, updateCart, clearCart } from '@/lib/cafe/cart-store'
+import { useIsHydrated } from '@/lib/ui/use-is-hydrated'
 import type { CatalogProduct, PaymentType } from '@/lib/types'
 
 function formatPrice(n: number) {
@@ -26,45 +29,54 @@ export function CartSection({
   profileComplete?: boolean
 }) {
   const router = useRouter()
-  const [quantities, setQuantities] = useState<Record<string, number>>({})
-  const [products, setProducts] = useState<CatalogProduct[]>([])
-  const [loading, setLoading] = useState(true)
+  const quantities = useCart()
+  const hydrated = useIsHydrated()
+  // null means "not fetched yet" — distinguishing that from an empty result
+  // lets `loading` be derived instead of being a second piece of state that
+  // an effect has to set synchronously on mount.
+  const [products, setProducts] = useState<CatalogProduct[] | null>(null)
   const [paymentType, setPaymentType] = useState<PaymentType>('cash')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [substitutes, setSubstitutes] = useState<CatalogProduct[]>([])
   const [confirmingLargeOrder, setConfirmingLargeOrder] = useState(false)
 
+  // Fetches the cart's products once, as soon as the real cart is available
+  // on the client. Deliberately keyed on hydration rather than on the cart
+  // contents: re-running it per quantity change would fire a server action on
+  // every +/- tap.
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('sherpa-cart')
-      const qty: Record<string, number> = stored ? JSON.parse(stored) : {}
-      setQuantities(qty)
-      const ids = Object.keys(qty).filter(id => qty[id] > 0)
-      if (ids.length === 0) { setLoading(false); return }
-      getCartProducts(ids).then(prods => { setProducts(prods); setLoading(false) })
-    } catch {
-      setLoading(false)
-    }
-  }, [])
+    if (!hydrated) return
+    const initial = getCartSnapshot()
+    const ids = Object.keys(initial).filter(id => initial[id] > 0)
+    if (ids.length === 0) return
 
-  function persistQty(next: Record<string, number>) {
-    setQuantities(next)
-    try { localStorage.setItem('sherpa-cart', JSON.stringify(next)) } catch {}
-  }
+    let cancelled = false
+    getCartProducts(ids).then(prods => {
+      if (!cancelled) setProducts(prods)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hydrated])
 
   function setQty(productId: string, qty: number) {
-    const next = { ...quantities }
-    if (qty <= 0) {
-      delete next[productId]
-      setProducts(prev => prev.filter(p => p.id !== productId))
-    } else {
-      next[productId] = qty
-    }
-    persistQty(next)
+    updateCart(previous => {
+      const next = { ...previous }
+      if (qty <= 0) delete next[productId]
+      else next[productId] = qty
+      return next
+    })
   }
 
-  const activeItems = products.filter(p => (quantities[p.id] ?? 0) > 0)
+  function handleClearCart() {
+    if (!confirm('Remove all items from your cart?')) return
+    clearCart()
+  }
+
+  // Products dropped from the cart fall out here rather than needing their own
+  // setProducts call — `quantities` is the single source of truth.
+  const activeItems = (products ?? []).filter(p => (quantities[p.id] ?? 0) > 0)
   const total = activeItems.reduce((sum, p) => sum + p.effective_price * (quantities[p.id] ?? 0), 0)
   const outOfStock = hasOutOfStockItems(activeItems)
 
@@ -87,18 +99,22 @@ export function CartSection({
   }, [oosCategoryKey, activeIdKey])
 
   function swapItem(oldProductId: string, replacement: CatalogProduct) {
-    const carryQty = quantities[oldProductId] ?? 0
-    const next = { ...quantities }
-    delete next[oldProductId]
-    next[replacement.id] = (next[replacement.id] ?? 0) + carryQty
-    persistQty(next)
+    updateCart(previous => {
+      const next = { ...previous }
+      const carryQty = next[oldProductId] ?? 0
+      delete next[oldProductId]
+      next[replacement.id] = (next[replacement.id] ?? 0) + carryQty
+      return next
+    })
     setProducts(prev => {
-      const withoutOld = prev.filter(p => p.id !== oldProductId)
+      const withoutOld = (prev ?? []).filter(p => p.id !== oldProductId)
       return withoutOld.some(p => p.id === replacement.id) ? withoutOld : [...withoutOld, replacement]
     })
   }
 
-  if (loading) return null
+  // Still fetching the cart's products — render nothing rather than a
+  // momentarily empty cart.
+  if (products === null && Object.keys(quantities).length > 0) return null
   if (activeItems.length === 0) return null
 
   function submitOrder() {
@@ -131,9 +147,17 @@ export function CartSection({
       {/* ---- Header ------------------------------------------------------ */}
       <header className="flex items-baseline justify-between gap-3 border-b border-cream-300 bg-cream-100 px-4 py-3.5 sm:px-5">
         <h2 className="display-sm text-brand-900">Your Order</h2>
-        <span className="eyebrow-sm text-gray-400">
-          {activeItems.length} {activeItems.length === 1 ? 'Item' : 'Items'}
-        </span>
+        <div className="flex items-center gap-3.5">
+          <span className="eyebrow-sm text-gray-400">
+            {activeItems.length} {activeItems.length === 1 ? 'Item' : 'Items'}
+          </span>
+          <button
+            onClick={handleClearCart}
+            className="font-display text-sm uppercase tracking-[0.12em] text-red-700 transition-colors hover:text-red-900"
+          >
+            Clear
+          </button>
+        </div>
       </header>
 
       {/* ---- Warnings ---------------------------------------------------- */}
@@ -197,24 +221,33 @@ export function CartSection({
                     Remove
                   </button>
                 ) : (
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-2">
                     <button
-                      onClick={() => setQty(product.id, qty - 1)}
-                      className="step-btn"
-                      aria-label={`Decrease ${product.name}`}
+                      onClick={() => setQty(product.id, 0)}
+                      className="text-gray-400 transition-colors hover:text-red-600"
+                      aria-label={`Remove ${product.name}`}
                     >
-                      <Minus className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                    <span className="w-6 text-center font-display text-base tabular-nums text-brand-900">
-                      {qty}
-                    </span>
-                    <button
-                      onClick={() => setQty(product.id, qty + 1)}
-                      className="step-btn step-btn-solid"
-                      aria-label={`Increase ${product.name}`}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setQty(product.id, qty - 1)}
+                        className="step-btn"
+                        aria-label={`Decrease ${product.name}`}
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="w-6 text-center font-display text-base tabular-nums text-brand-900">
+                        {qty}
+                      </span>
+                      <button
+                        onClick={() => setQty(product.id, qty + 1)}
+                        className="step-btn step-btn-solid"
+                        aria-label={`Increase ${product.name}`}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 )}
 

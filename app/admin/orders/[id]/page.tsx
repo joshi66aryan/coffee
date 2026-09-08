@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getAdminOrder, getOrderInvoice } from '@/lib/admin/actions'
 import { OrderDetailCard } from '@/components/admin/order-detail-card'
 import { OrderStatusActions } from '@/components/admin/order-status-actions'
+import { DeleteOrderButton } from '@/components/admin/delete-order-button'
 import { RealtimeRefresh } from '@/components/ui/realtime-refresh'
 import { PageMasthead } from '@/components/ui/page-masthead'
 
@@ -14,9 +15,12 @@ interface Props {
 export default async function AdminOrderDetailPage({ params }: Props) {
   const { id } = await params
 
+  // Both lookups key off the same order id, so they run together rather than
+  // one after the other — and they now share a single admin auth check.
   let result: Awaited<ReturnType<typeof getAdminOrder>>
+  let invoice: Awaited<ReturnType<typeof getOrderInvoice>>
   try {
-    result = await getAdminOrder(id)
+    ;[result, invoice] = await Promise.all([getAdminOrder(id), getOrderInvoice(id)])
   } catch {
     return (
       <div className="flex min-h-screen items-center justify-center bg-cream-100">
@@ -28,7 +32,6 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   if (!result) notFound()
   const { order, items } = result
   const shortId = order.id.split('-')[0].toUpperCase()
-  const invoice = await getOrderInvoice(order.id)
 
   return (
     <div className="min-h-screen bg-cream-100 pb-16">
@@ -48,6 +51,10 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           </div>
 
           <OrderDetailCard order={order} items={items} invoice={invoice} />
+
+          <div className="rounded-xl border border-cream-300 bg-white p-5">
+            <DeleteOrderButton orderId={order.id} />
+          </div>
         </div>
       </div>
     </div>

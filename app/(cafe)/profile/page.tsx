@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Settings } from 'lucide-react'
@@ -18,9 +19,7 @@ export const metadata = { title: 'Account — Sherpa Sips' }
 
 export default async function ProfilePage() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
   const [cafeResult, lastOrderResult, unpaidOrdersResult] = await Promise.all([

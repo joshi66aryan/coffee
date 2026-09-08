@@ -15,6 +15,6 @@ export function paymentFilterStatuses(filter: PaymentFilter): PaymentStatus[] | 
   return null
 }
 
-export function sumOutstanding(orders: { total_amount: number }[]): number {
+export function sumAmounts(orders: { total_amount: number }[]): number {
   return orders.reduce((sum, o) => sum + o.total_amount, 0)
 }

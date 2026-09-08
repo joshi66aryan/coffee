@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CafeHeader } from '@/components/cafe/cafe-header'
@@ -28,14 +29,13 @@ export default async function ProfileOrdersPage({ searchParams }: PageProps) {
   const to = from + ORDERS_PAGE_SIZE - 1
 
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
+  // See getCafes in lib/admin/actions.ts for why this count is estimated.
   let ordersQuery = supabase
     .from('orders')
-    .select('*', { count: 'exact' })
+    .select('*', { count: 'estimated' })
     .eq('cafe_id', user.id)
     .order('created_at', { ascending: false })
     .range(from, to)

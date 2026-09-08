@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getAuthUser } from '@/lib/supabase/user'
 
 // Marks a response as belonging to an authenticated page so browsers won't
 // serve it from bfcache after sign-out — without this, pressing Back after
@@ -31,10 +32,10 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  const {
-    data: { user },
-    error: getUserError,
-  } = await supabase.auth.getUser()
+  // Verifies the access token locally rather than calling the Auth API, so
+  // this no longer costs a network round trip before the render even starts.
+  // See lib/supabase/user.ts.
+  const { user, error: getUserError } = await getAuthUser(supabase)
 
   const { pathname } = request.nextUrl
   const url = request.nextUrl

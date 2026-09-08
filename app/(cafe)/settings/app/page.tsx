@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import { redirect } from 'next/navigation'
 import { ChevronRight, Info, MessageCircle } from 'lucide-react'
 import { CafeHeader } from '@/components/cafe/cafe-header'
@@ -6,15 +6,12 @@ import { PageMasthead } from '@/components/ui/page-masthead'
 import { PushNotificationToggle } from '@/components/cafe/push-notification-toggle'
 import { InstallAppRow } from '@/components/cafe/install-app-row'
 import { SUPPORT_WHATSAPP_LINK } from '@/lib/cafe/constants'
-import { getPushSubscriptionStatus } from '@/lib/push/actions'
+import { getPushSubscriptionStatus } from '@/lib/push/status'
 
 export const metadata = { title: 'App Settings — Sherpa Sips' }
 
 export default async function AppSettingsPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
   const { subscribed } = await getPushSubscriptionStatus()

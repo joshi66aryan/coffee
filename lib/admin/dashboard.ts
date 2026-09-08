@@ -102,7 +102,25 @@ export interface DailySales {
   total: number
 }
 
-export const SALES_TREND_DAYS = 30
+export const SALES_TREND_DAYS = 60
+
+// Expands sparse per-day totals into one bucket per day across the window,
+// oldest first, so the trend line has no gaps. Shared by the in-JS reduction
+// below and by the SQL aggregate, which also returns only non-empty days.
+export function fillDailySales(
+  totals: ReadonlyMap<string, number>,
+  days: number = SALES_TREND_DAYS,
+  referenceDate: Date = new Date(),
+): DailySales[] {
+  const result: DailySales[] = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(referenceDate)
+    d.setUTCDate(d.getUTCDate() - i)
+    const date = d.toISOString().slice(0, 10)
+    result.push({ date, total: totals.get(date) ?? 0 })
+  }
+  return result
+}
 
 export function summarizeDailySales(
   orders: DailySalesInput[],
@@ -114,15 +132,7 @@ export function summarizeDailySales(
     const date = order.created_at.slice(0, 10)
     totals.set(date, (totals.get(date) ?? 0) + order.total_amount)
   }
-
-  const result: DailySales[] = []
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(referenceDate)
-    d.setUTCDate(d.getUTCDate() - i)
-    const date = d.toISOString().slice(0, 10)
-    result.push({ date, total: totals.get(date) ?? 0 })
-  }
-  return result
+  return fillDailySales(totals, days, referenceDate)
 }
 
 export interface StatusCountInput {
@@ -136,12 +146,22 @@ export interface StatusCount {
 
 // Fixed order (received → delivered) so the chart reads as a funnel/ordinal
 // stage sequence rather than an arbitrary categorical ranking.
+function inStatusOrder(counts: ReadonlyMap<OrderStatus, number>): StatusCount[] {
+  return ORDER_STATUSES.map(status => ({ status, count: counts.get(status) ?? 0 }))
+}
+
+// Puts already-counted statuses (from the SQL aggregate, which returns only
+// statuses that occur) into the same fixed order, filling in the missing ones.
+export function orderStatusCounts(counts: StatusCount[]): StatusCount[] {
+  return inStatusOrder(new Map(counts.map(c => [c.status, c.count])))
+}
+
 export function summarizeOrderStatusCounts(orders: StatusCountInput[]): StatusCount[] {
   const counts = new Map<OrderStatus, number>()
   for (const order of orders) {
     counts.set(order.status, (counts.get(order.status) ?? 0) + 1)
   }
-  return ORDER_STATUSES.map(status => ({ status, count: counts.get(status) ?? 0 }))
+  return inStatusOrder(counts)
 }
 
 export interface DashboardStats extends OrderSummary, CafeSummary {

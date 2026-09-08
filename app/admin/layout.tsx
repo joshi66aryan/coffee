@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { AdminNavDesktop, AdminNavMobile } from '@/components/admin/admin-nav'
 import { PushNotificationToggle } from '@/components/admin/push-notification-toggle'
 import { SignOutButton } from '@/components/sign-out-button'
-import { getPushSubscriptionStatus } from '@/lib/push/actions'
+import { getPushSubscriptionStatus } from '@/lib/push/status'
 import { SherpaSipsLogo } from '@/components/cafe/sherpa-sips-logo'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

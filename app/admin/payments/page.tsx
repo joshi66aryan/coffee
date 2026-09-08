@@ -39,7 +39,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
     )
   }
 
-  const { items: orders, total, outstandingTotal } = result
+  const { items: orders, total, outstandingTotal, paidTotal } = result
   const basePath = '/admin/payments'
 
   return (
@@ -56,12 +56,20 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
           }
         />
 
-        {/* Outstanding balance carried as a display statistic, not body copy. */}
-        <div className="mt-6 flex items-baseline justify-between gap-4 rounded-xl bg-brand-900 px-5 py-4 text-cream-200 sm:px-6">
-          <span className="eyebrow-sm text-cream-200/55">Outstanding across all cafés</span>
-          <span className="display-stat text-brand-400">
-            <span className="text-[0.5em]">Rs.</span> {outstandingTotal.toLocaleString('en-IN')}
-          </span>
+        {/* Outstanding vs. received carried as display statistics, not body copy. */}
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex items-baseline justify-between gap-4 rounded-xl bg-brand-900 px-5 py-4 text-cream-200 sm:px-6">
+            <span className="eyebrow-sm text-cream-200/55">Outstanding across all cafés</span>
+            <span className="display-stat text-brand-400">
+              <span className="text-[0.5em]">Rs.</span> {outstandingTotal.toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-4 rounded-xl bg-olive-700 px-5 py-4 text-cream-200 sm:px-6">
+            <span className="eyebrow-sm text-cream-200/70">Payment received across all cafés</span>
+            <span className="display-stat text-cream-100">
+              <span className="text-[0.5em]">Rs.</span> {paidTotal.toLocaleString('en-IN')}
+            </span>
+          </div>
         </div>
 
         <div className="my-6 flex gap-2">

@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import logger from '@/lib/logger'
 import { resolvePostAuthRedirect } from '@/lib/cafe/auth-redirect'
 import { toNepalPhone, NEPAL_PHONE_REGEX } from '@/lib/cafe/phone'
@@ -88,7 +89,7 @@ export async function createCafeProfile(
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) return { error: 'Not authenticated — please log in again.' }
 
   // Idempotent: if profile already exists, skip to the right page
@@ -138,7 +139,7 @@ export async function updateCafeProfile(
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) return { error: 'Not authenticated — please log in again.' }
 
   // Explicit column whitelist — the update-own RLS policy is row-scoped only,
@@ -171,7 +172,7 @@ export async function changePassword(
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) return { error: 'Not authenticated — please log in again.' }
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data })

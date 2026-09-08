@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Bell, X } from 'lucide-react'
 import { usePushToggle } from '@/lib/push/use-push-toggle'
+import { useStoredFlag } from '@/lib/ui/use-stored-flag'
+import { useIsHydrated } from '@/lib/ui/use-is-hydrated'
 
 const DISMISS_KEY = 'sherpa-admin-push-prompt-dismissed'
 
@@ -10,18 +12,23 @@ const DISMISS_KEY = 'sherpa-admin-push-prompt-dismissed'
 // the closest thing to "notifications on by default": ask right away instead
 // of waiting for someone to find the bell icon in the header.
 export function NotificationPromptBanner({ initialSubscribed }: { initialSubscribed: boolean }) {
-  const [dismissed, setDismissed] = useState(true)
-  const [permission, setPermission] = useState<NotificationPermission | null>(null)
+  const hydrated = useIsHydrated()
+  const storedDismissal = useStoredFlag(DISMISS_KEY)
+  // Writing the key doesn't notify this tab's own reader, so the dismissal
+  // is also tracked in state to hide the banner immediately.
+  const [dismissedNow, setDismissedNow] = useState(false)
   const { subscribed, isPending, unsupported, toggle } = usePushToggle(initialSubscribed)
 
-  useEffect(() => {
-    setDismissed(localStorage.getItem(DISMISS_KEY) === '1')
-    if (typeof Notification !== 'undefined') setPermission(Notification.permission)
-  }, [])
+  const dismissed = dismissedNow || storedDismissal === '1'
+  // Read during render rather than through an effect — it's a browser global
+  // that can't be known until after hydration, and `hydrated` gates on that.
+  const permission = hydrated && typeof Notification !== 'undefined' ? Notification.permission : null
 
   function dismiss() {
-    localStorage.setItem(DISMISS_KEY, '1')
-    setDismissed(true)
+    try {
+      localStorage.setItem(DISMISS_KEY, '1')
+    } catch {}
+    setDismissedNow(true)
   }
 
   if (unsupported || subscribed || dismissed || permission === 'denied' || permission === null) return null

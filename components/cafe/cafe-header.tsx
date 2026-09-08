@@ -2,30 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import { CAFE_NAV_ITEMS } from '@/lib/cafe/nav-items'
 import { SherpaSipsLogo } from '@/components/cafe/sherpa-sips-logo'
+import { useCart } from '@/lib/cafe/use-cart'
+import { cartItemCount } from '@/lib/cafe/cart-store'
 
 export function CafeHeader({ cafeName }: { cafeName?: string }) {
   const pathname = usePathname()
-  const [cartCount, setCartCount] = useState(0)
-
-  useEffect(() => {
-    function readCart() {
-      try {
-        const stored = localStorage.getItem('sherpa-cart')
-        if (!stored) { setCartCount(0); return }
-        const qty: Record<string, number> = JSON.parse(stored)
-        setCartCount(Object.values(qty).reduce((sum, n) => sum + n, 0))
-      } catch {
-        setCartCount(0)
-      }
-    }
-    readCart()
-    window.addEventListener('storage', readCart)
-    const interval = setInterval(readCart, 500)
-    return () => { window.removeEventListener('storage', readCart); clearInterval(interval) }
-  }, [])
+  const cartCount = cartItemCount(useCart())
 
   return (
     <header className="sticky top-0 z-20 bg-brand-900 text-cream-200">

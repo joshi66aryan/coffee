@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   computeTopProducts,
+  fillDailySales,
+  orderStatusCounts,
   summarizeCafes,
   summarizeDailySales,
   summarizeOrders,
@@ -153,8 +155,8 @@ describe('summarizeDailySales', () => {
     expect(result.every(d => d.total === 0)).toBe(true)
   })
 
-  it('defaults to a 30-day window', () => {
-    expect(summarizeDailySales([], undefined, referenceDate)).toHaveLength(30)
+  it('defaults to a 60-day window', () => {
+    expect(summarizeDailySales([], undefined, referenceDate)).toHaveLength(60)
   })
 })
 
@@ -180,6 +182,83 @@ describe('summarizeOrderStatusCounts', () => {
       { status: 'confirmed', count: 1 },
       { status: 'out_for_delivery', count: 0 },
       { status: 'delivered', count: 1 },
+    ])
+  })
+})
+
+// fillDailySales and orderStatusCounts take the *pre-aggregated* shapes the
+// SQL dashboard aggregate returns (only days / statuses that actually occur),
+// and are what keep the chart continuous and in a fixed order.
+describe('fillDailySales', () => {
+  const referenceDate = new Date('2025-01-10T12:00:00.000Z')
+
+  it('returns one bucket per day, oldest first, ending on the reference date', () => {
+    const result = fillDailySales(new Map(), 3, referenceDate)
+    expect(result).toEqual([
+      { date: '2025-01-08', total: 0 },
+      { date: '2025-01-09', total: 0 },
+      { date: '2025-01-10', total: 0 },
+    ])
+  })
+
+  it('places sparse day totals on their matching dates and zero-fills the rest', () => {
+    const result = fillDailySales(new Map([['2025-01-09', 750]]), 3, referenceDate)
+    expect(result).toEqual([
+      { date: '2025-01-08', total: 0 },
+      { date: '2025-01-09', total: 750 },
+      { date: '2025-01-10', total: 0 },
+    ])
+  })
+
+  it('ignores totals for days outside the window', () => {
+    const result = fillDailySales(new Map([['2024-12-01', 999]]), 2, referenceDate)
+    expect(result).toEqual([
+      { date: '2025-01-09', total: 0 },
+      { date: '2025-01-10', total: 0 },
+    ])
+  })
+
+  it('agrees with summarizeDailySales given equivalent input', () => {
+    const orders = [
+      { created_at: '2025-01-09T08:00:00.000Z', total_amount: 300 },
+      { created_at: '2025-01-09T20:00:00.000Z', total_amount: 450 },
+    ]
+    expect(fillDailySales(new Map([['2025-01-09', 750]]), 3, referenceDate)).toEqual(
+      summarizeDailySales(orders, 3, referenceDate),
+    )
+  })
+})
+
+describe('orderStatusCounts', () => {
+  it('fills in every status missing from the aggregate', () => {
+    expect(orderStatusCounts([{ status: 'delivered', count: 4 }])).toEqual([
+      { status: 'received', count: 0 },
+      { status: 'confirmed', count: 0 },
+      { status: 'out_for_delivery', count: 0 },
+      { status: 'delivered', count: 4 },
+    ])
+  })
+
+  it('reorders counts into the received -> delivered sequence', () => {
+    const result = orderStatusCounts([
+      { status: 'delivered', count: 1 },
+      { status: 'received', count: 2 },
+      { status: 'confirmed', count: 1 },
+    ])
+    expect(result).toEqual([
+      { status: 'received', count: 2 },
+      { status: 'confirmed', count: 1 },
+      { status: 'out_for_delivery', count: 0 },
+      { status: 'delivered', count: 1 },
+    ])
+  })
+
+  it('returns all zeros for an empty aggregate', () => {
+    expect(orderStatusCounts([])).toEqual([
+      { status: 'received', count: 0 },
+      { status: 'confirmed', count: 0 },
+      { status: 'out_for_delivery', count: 0 },
+      { status: 'delivered', count: 0 },
     ])
   })
 })

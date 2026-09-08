@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { RotateCcw, X } from 'lucide-react'
 import { BeanMark } from '@/components/brand/bean-mark'
+import { setCart } from '@/lib/cafe/cart-store'
+import { useStoredFlag } from '@/lib/ui/use-stored-flag'
+import { useIsHydrated } from '@/lib/ui/use-is-hydrated'
 import type { OrderItemPreview } from '@/lib/types'
 
 const DISMISS_KEY = 'sherpa-buy-again-dismissed'
@@ -20,9 +24,15 @@ function ItemThumb({ src, alt }: { src: string | null; alt: string }) {
       </span>
     )
   }
+  // Fixed 36×44 thumbnail — see the note in order-history-list.
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className="arch-sm h-11 w-9 shrink-0 border-2 border-white object-cover" />
+    <Image
+      src={src}
+      alt={alt}
+      width={36}
+      height={44}
+      className="arch-sm h-11 w-9 shrink-0 border-2 border-white object-cover"
+    />
   )
 }
 
@@ -47,24 +57,21 @@ export function RepeatLastOrderCard({
   showHeader?: boolean
 }) {
   const router = useRouter()
-  // Hidden until the mount check confirms it wasn't already dismissed —
-  // avoids a flash of the card before localStorage can be read.
-  const [dismissed, setDismissed] = useState(dismissible)
+  const hydrated = useIsHydrated()
+  const storedDismissal = useStoredFlag(DISMISS_KEY)
+  // Tracked separately so dismissing takes effect immediately — writing the
+  // key doesn't notify this tab's own reader.
+  const [dismissedNow, setDismissedNow] = useState(false)
 
-  useEffect(() => {
-    if (!dismissible) return
-    try {
-      setDismissed(localStorage.getItem(DISMISS_KEY) === shortId)
-    } catch {
-      setDismissed(false)
-    }
-  }, [shortId, dismissible])
+  // Hidden until the cart flag has actually been read on the client — avoids
+  // a flash of a card the café already dismissed.
+  const dismissed = dismissible && (!hydrated || dismissedNow || storedDismissal === shortId)
 
   function handleDismiss() {
     try {
       localStorage.setItem(DISMISS_KEY, shortId)
     } catch {}
-    setDismissed(true)
+    setDismissedNow(true)
   }
 
   const preview = items.slice(0, 3)
@@ -79,9 +86,7 @@ export function RepeatLastOrderCard({
     items.forEach(item => {
       qty[item.product_id] = item.quantity
     })
-    try {
-      localStorage.setItem('sherpa-cart', JSON.stringify(qty))
-    } catch {}
+    setCart(qty)
     router.push('/orders')
   }
 

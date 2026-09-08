@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import { redirect } from 'next/navigation'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { PageMasthead } from '@/components/ui/page-masthead'
@@ -12,9 +13,7 @@ export const metadata = { title: 'Account Settings — Sherpa Sips' }
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
   const { data: cafe, error } = await supabase

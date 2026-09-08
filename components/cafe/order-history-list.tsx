@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { ChevronRight, CheckCircle2, Truck, Clock, Package } from 'lucide-react'
 import { BeanMark } from '@/components/brand/bean-mark'
 import type { OrderWithPreview, OrderStatus } from '@/lib/types'
@@ -38,9 +39,16 @@ function ItemThumb({ src, alt }: { src: string | null; alt: string }) {
       </span>
     )
   }
+  // Fixed 40×48 thumbnail — served resized rather than as the full-resolution
+  // storage original, which is the same file the catalog card uses.
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className="arch-sm h-12 w-10 shrink-0 object-cover" />
+    <Image
+      src={src}
+      alt={alt}
+      width={40}
+      height={48}
+      className="arch-sm h-12 w-10 shrink-0 object-cover"
+    />
   )
 }
 

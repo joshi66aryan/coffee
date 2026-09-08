@@ -2,32 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import { CAFE_NAV_ITEMS } from '@/lib/cafe/nav-items'
+import { useCart } from '@/lib/cafe/use-cart'
+import { cartItemCount } from '@/lib/cafe/cart-store'
 
 const SHOW_ON = ['/', '/orders', '/profile']
 
 export function BottomNav() {
   const pathname = usePathname()
-  const [cartCount, setCartCount] = useState(0)
-
-  useEffect(() => {
-    function readCart() {
-      try {
-        const stored = localStorage.getItem('sherpa-cart')
-        if (!stored) { setCartCount(0); return }
-        const qty: Record<string, number> = JSON.parse(stored)
-        setCartCount(Object.values(qty).reduce((sum, n) => sum + n, 0))
-      } catch {
-        setCartCount(0)
-      }
-    }
-    readCart()
-    window.addEventListener('storage', readCart)
-    // Poll every 500ms to catch same-tab updates
-    const interval = setInterval(readCart, 500)
-    return () => { window.removeEventListener('storage', readCart); clearInterval(interval) }
-  }, [])
+  const cartCount = cartItemCount(useCart())
 
   if (!SHOW_ON.includes(pathname)) return null
 

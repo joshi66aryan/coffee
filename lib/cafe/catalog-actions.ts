@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import logger from '@/lib/logger'
 import type { Product, CafeProductPrice, CatalogProduct } from '@/lib/types'
 
@@ -8,11 +9,11 @@ export async function getCartProducts(productIds: string[]): Promise<CatalogProd
   if (productIds.length === 0) return []
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) return []
 
   const [productsResult, pricesResult] = await Promise.all([
-    supabase.from('products').select('*').in('id', productIds),
+    supabase.from('products').select('*').is('archived_at', null).in('id', productIds),
     supabase.from('cafe_product_prices').select('*').eq('cafe_id', user.id).in('product_id', productIds),
   ])
 
@@ -39,13 +40,14 @@ export async function getSubstituteProducts(
   if (categories.length === 0) return []
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) return []
 
   const [productsResult, pricesResult] = await Promise.all([
     supabase
       .from('products')
       .select('*')
+      .is('archived_at', null)
       .in('category', categories)
       .eq('stock_status', 'in_stock')
       .order('name'),

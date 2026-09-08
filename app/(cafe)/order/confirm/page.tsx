@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Check } from 'lucide-react'
@@ -31,7 +32,7 @@ export default async function ConfirmPage({
   if (!orderId) redirect('/')
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
   const { data: order, error } = await supabase

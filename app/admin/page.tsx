@@ -5,10 +5,11 @@ import { StatCard } from '@/components/admin/stat-card'
 import { TopProductsTable } from '@/components/admin/top-products-table'
 import { TopProductsChart } from '@/components/admin/top-products-chart'
 import { SalesTrendChart } from '@/components/admin/sales-trend-chart'
+import { SalesTrendDownload } from '@/components/admin/sales-trend-download'
 import { OrderStatusChart } from '@/components/admin/order-status-chart'
 import { NotificationPromptBanner } from '@/components/admin/notification-prompt-banner'
 import { RealtimeRefresh } from '@/components/ui/realtime-refresh'
-import { getPushSubscriptionStatus } from '@/lib/push/actions'
+import { getPushSubscriptionStatus } from '@/lib/push/status'
 
 export const metadata = { title: 'Dashboard — Admin' }
 
@@ -17,9 +18,15 @@ function formatAmount(amount: number) {
 }
 
 export default async function AdminDashboardPage() {
+  // The push-subscription lookup doesn't depend on the stats, so the two run
+  // together — previously the banner's query waited for the whole dashboard
+  // aggregate to come back before it even started.
   let stats: Awaited<ReturnType<typeof getDashboardStats>>
+  let subscribed: boolean
   try {
-    stats = await getDashboardStats()
+    const [statsResult, pushResult] = await Promise.all([getDashboardStats(), getPushSubscriptionStatus()])
+    stats = statsResult
+    subscribed = pushResult.subscribed
   } catch {
     return (
       <div className="flex min-h-screen items-center justify-center bg-cream-100">
@@ -27,8 +34,6 @@ export default async function AdminDashboardPage() {
       </div>
     )
   }
-
-  const { subscribed } = await getPushSubscriptionStatus()
 
   return (
     <div className="min-h-screen bg-cream-100 pb-16">
@@ -71,7 +76,10 @@ export default async function AdminDashboardPage() {
         <section className="mb-6 overflow-hidden rounded-xl border border-cream-300 bg-white">
           <div className="flex items-baseline justify-between gap-3 border-b border-cream-300 bg-cream-100 px-5 py-3.5">
             <h2 className="display-sm text-brand-900">Sales Trend</h2>
-            <span className="eyebrow-sm text-gray-400">Last 30 Days</span>
+            <div className="flex items-center gap-4">
+              <span className="eyebrow-sm text-gray-400">Last 60 Days</span>
+              <SalesTrendDownload data={stats.salesTrend} />
+            </div>
           </div>
           <div className="px-5 py-5">
             <SalesTrendChart data={stats.salesTrend} />

@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import logger from '@/lib/logger'
 
 const SubscriptionSchema = z.object({
@@ -30,15 +31,12 @@ export async function subscribeToPush(subscription: unknown): Promise<{ error?: 
   const parsed = SubscriptionSchema.safeParse(subscription)
   if (!parsed.success) return { error: 'Invalid push subscription' }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  const { user, error: authError } = await getCachedUser()
   if (authError || !user) return { error: 'Not authenticated' }
 
   const role = user.app_metadata?.role === 'admin' ? 'admin' : 'cafe'
 
+  const supabase = await createClient()
   const { error } = await supabase.from('push_subscriptions').upsert(
     {
       user_id: user.id,
@@ -61,14 +59,12 @@ export async function subscribeToPush(subscription: unknown): Promise<{ error?: 
 }
 
 export async function unsubscribeFromPush(endpoint: string): Promise<{ error?: string }> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) return { error: 'Not authenticated' }
 
   const role = user.app_metadata?.role === 'admin' ? 'admin' : 'cafe'
 
+  const supabase = await createClient()
   const { error } = await supabase
     .from('push_subscriptions')
     .delete()
@@ -85,22 +81,5 @@ export async function unsubscribeFromPush(endpoint: string): Promise<{ error?: s
   return {}
 }
 
-export async function getPushSubscriptionStatus(): Promise<{ subscribed: boolean }> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { subscribed: false }
-
-  const { count, error } = await supabase
-    .from('push_subscriptions')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-
-  if (error) {
-    logger.error('Failed to fetch push subscription status', { userId: user.id, msg: error.message })
-    return { subscribed: false }
-  }
-
-  return { subscribed: (count ?? 0) > 0 }
-}
+// getPushSubscriptionStatus now lives in @/lib/push/status — every caller is a
+// Server Component, so it is a cached read rather than a Server Action.

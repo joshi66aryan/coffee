@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/user'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
@@ -26,18 +27,20 @@ export default async function OrderDetailPage({
   const { id } = await params
 
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
-  const [orderResult, itemsResult] = await Promise.all([
+  // The invoice lookup doesn't depend on the order row, so it runs alongside
+  // it rather than after — it was adding a serial database round trip plus a
+  // storage signed-URL call to every order detail render.
+  const [orderResult, itemsResult, invoice] = await Promise.all([
     supabase.from('orders').select('*').eq('id', id).eq('cafe_id', user.id).single<Order>(),
     supabase
       .from('order_items')
       .select('id, product_id, quantity, unit_price_at_time_of_order, products(name, unit)')
       .eq('order_id', id)
       .returns<OrderItemRow[]>(),
+    getInvoiceDownloadUrl(id),
   ])
 
   if (orderResult.error || !orderResult.data) {
@@ -65,8 +68,6 @@ export default async function OrderDetailPage({
     quantity: row.quantity,
     unit_price_at_time_of_order: row.unit_price_at_time_of_order,
   }))
-
-  const invoice = await getInvoiceDownloadUrl(id)
 
   return (
     <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
