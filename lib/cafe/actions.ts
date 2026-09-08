@@ -35,7 +35,10 @@ export async function signInWithEmail(
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    logger.error('Email sign-in failed', { email, msg: error.message })
+    // The attempted address is deliberately not logged: sign-in failures are
+    // the one log line an attacker can generate at will, and filling the log
+    // with candidate addresses turns it into a credential-stuffing worksheet.
+    logger.error('Email sign-in failed', { msg: error.message })
     return { error: 'Invalid email or password.' }
   }
 
@@ -57,13 +60,17 @@ export async function signUpWithEmail(
   const { data, error } = await supabase.auth.signUp({ email, password })
 
   if (error) {
-    logger.error('Email sign-up failed', { email, msg: error.message })
-    return { error: error.message }
+    // Supabase's message distinguishes "User already registered" from every
+    // other failure, which answers "does this address have an account here?"
+    // for anyone who asks. The password itself was already validated above by
+    // strongPasswordSchema, so nothing actionable is lost by collapsing this.
+    logger.error('Email sign-up failed', { msg: error.message })
+    return { error: 'Could not create the account. Please try again.' }
   }
 
   // Email confirmation required — user is not yet logged in
   if (!data.session) {
-    logger.info('Sign-up pending email confirmation', { email })
+    logger.info('Sign-up pending email confirmation')
     return { confirm: true }
   }
 
@@ -103,6 +110,12 @@ export async function createCafeProfile(
     return { redirect: existing.status === 'active' ? '/' : '/pending' }
   }
 
+  // `status` is deliberately not named here. Migration 012 revokes it (and
+  // credit_enabled) from the `authenticated` role's column grants precisely so
+  // that a café cannot write its own approval state, and a grant applies to
+  // any write that names the column — including one that happens to be writing
+  // the correct value. The column default is 'pending', which is what this
+  // wants anyway.
   const { error } = await supabase.from('cafes').insert({
     id:               user.id,
     name:             parsed.data.name,
@@ -110,7 +123,6 @@ export async function createCafeProfile(
     phone:            parsed.data.phone,
     neighborhood:     parsed.data.neighborhood,
     delivery_address: parsed.data.delivery_address,
-    status:           'pending',
   })
 
   if (error) {
@@ -179,7 +191,7 @@ export async function changePassword(
 
   if (error) {
     logger.error('Failed to change password', { userId: user.id, msg: error.message })
-    return { error: error.message }
+    return { error: 'Could not change your password. Please try again.' }
   }
 
   logger.info('Password changed', { userId: user.id })

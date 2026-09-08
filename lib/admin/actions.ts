@@ -5,7 +5,6 @@ import { z } from 'zod'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PRODUCTS_CACHE_TAG } from '@/lib/cafe/catalog-cache'
 import { getCachedUser } from '@/lib/supabase/user'
@@ -28,6 +27,7 @@ import type {
 import { PAGE_SIZE } from '@/lib/admin/constants'
 import { isValidDateString, parseOrderSort } from '@/lib/admin/order-queue'
 import { parsePaymentFilter, paymentFilterStatuses, sumAmounts } from '@/lib/admin/payments'
+import { ilikeAnyColumn } from '@/lib/admin/search'
 import {
   computeTopProducts,
   fillDailySales,
@@ -42,31 +42,43 @@ import {
   type OrderSummaryInput,
 } from '@/lib/admin/dashboard'
 
-// Verify the caller is an authenticated admin (no café profile = admin for Phase 2).
-// Admin identity is also confirmed by app_metadata.role when set.
+// Verify the caller is an authenticated admin.
+//
+// Admin is `app_metadata.role === 'admin'`, and nothing else. app_metadata is
+// written only by the Supabase dashboard / service-role Admin API — it is not
+// settable by the user and it is a signed claim in the access token, so this
+// is a real boundary rather than a client assertion.
+//
+// This deliberately has no "no café profile = admin" fallback. Sign-up is
+// open, and a user who has simply not completed onboarding has no café row —
+// so that fallback handed every freshly registered account the full
+// service-role surface below (read every café's data, approve cafés, rewrite
+// prices, delete orders). Middleware already requires this same claim to
+// reach any /admin route, so a genuine admin always has it and no legitimate
+// flow depended on the fallback.
 //
 // Cached per request: a single page render awaits several of these actions
-// (the order detail page calls getAdminOrder *and* getOrderInvoice), and each
-// one used to repeat the auth round trip and the café-profile lookup.
+// (the order detail page calls getAdminOrder *and* getOrderInvoice), and this
+// keeps it to one claims read rather than one per action. The check is local
+// (no network) — see lib/supabase/user.ts.
 const assertAdmin = cache(async (): Promise<string> => {
   const { user, error } = await getCachedUser()
 
   if (error || !user) throw new Error('Not authenticated')
+  if (user.app_metadata?.role !== 'admin') throw new Error('Not authorized')
 
-  const isAdminByMeta = user.app_metadata?.role === 'admin'
-  if (isAdminByMeta) return user.id
-
-  // Fallback: admin has no café profile
-  const supabase = await createClient()
-  const { data: cafe } = await supabase
-    .from('cafes')
-    .select('id')
-    .eq('id', user.id)
-    .single()
-
-  if (cafe) throw new Error('Not authorized')
   return user.id
 })
+
+// Every admin action below takes ids straight from the client. PostgREST sends
+// them as parameters so they are not an injection vector, but an unvalidated id
+// still reaches the service-role client, and a malformed one surfaces as a raw
+// Postgres type error instead of a clean rejection. Validated once, here.
+const uuidSchema = z.string().uuid()
+
+function invalidId(value: string): boolean {
+  return !uuidSchema.safeParse(value).success
+}
 
 export interface PaginatedResult<T> {
   items: T[]
@@ -98,7 +110,7 @@ export async function getCafes(params?: {
     .range(from, to)
 
   if (q) {
-    query = query.or(`name.ilike.%${q}%,contact_name.ilike.%${q}%,neighborhood.ilike.%${q}%,phone.ilike.%${q}%`)
+    query = query.or(ilikeAnyColumn(['name', 'contact_name', 'neighborhood', 'phone'], q))
   }
 
   const { data, error, count } = await query
@@ -118,6 +130,7 @@ export async function getCafes(params?: {
 
 export async function approveCafe(cafeId: string): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+  if (invalidId(cafeId)) return { error: 'Invalid café id.' }
   const admin = createAdminClient()
 
   const { error } = await admin
@@ -136,6 +149,7 @@ export async function approveCafe(cafeId: string): Promise<{ error?: string }> {
 
 export async function rejectCafe(cafeId: string): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+  if (invalidId(cafeId)) return { error: 'Invalid café id.' }
   const admin = createAdminClient()
 
   const { error } = await admin
@@ -154,6 +168,7 @@ export async function rejectCafe(cafeId: string): Promise<{ error?: string }> {
 
 export async function getCafe(id: string): Promise<Cafe | null> {
   await assertAdmin()
+  if (invalidId(id)) return null
   const admin = createAdminClient()
 
   const { data, error } = await admin.from('cafes').select('*').eq('id', id).single<Cafe>()
@@ -168,6 +183,7 @@ export async function getCafe(id: string): Promise<Cafe | null> {
 
 export async function getCafeCompletedOrderCount(cafeId: string): Promise<number> {
   await assertAdmin()
+  if (invalidId(cafeId)) return 0
   const admin = createAdminClient()
 
   const { count, error } = await admin
@@ -189,6 +205,7 @@ export async function updateCafeCreditEnabled(
   enabled: boolean,
 ): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+  if (invalidId(cafeId)) return { error: 'Invalid café id.' }
   const admin = createAdminClient()
 
   const { error } = await admin.from('cafes').update({ credit_enabled: enabled }).eq('id', cafeId)
@@ -205,6 +222,7 @@ export async function updateCafeCreditEnabled(
 
 export async function getCafeProductPricing(cafeId: string): Promise<CafeProductPricingRow[]> {
   await assertAdmin()
+  if (invalidId(cafeId)) return []
   const admin = createAdminClient()
 
   const [productsResult, pricesResult] = await Promise.all([
@@ -247,6 +265,8 @@ export async function setCafeProductPrice(
   customPrice: number | null,
 ): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+
+  if (invalidId(cafeId) || invalidId(productId)) return { error: 'Invalid café or product id.' }
 
   const parsed = SetCafePriceSchema.safeParse({ customPrice })
   if (!parsed.success) return { error: 'Enter a valid price.' }
@@ -383,6 +403,7 @@ export async function getAdminOrder(
   id: string,
 ): Promise<{ order: AdminOrder; items: OrderLineItem[] } | null> {
   await assertAdmin()
+  if (invalidId(id)) return null
   const admin = createAdminClient()
 
   const [orderResult, itemsResult] = await Promise.all([
@@ -423,6 +444,7 @@ export async function getAdminOrder(
 
 export async function getOrderInvoice(orderId: string): Promise<InvoiceDownload | null> {
   await assertAdmin()
+  if (invalidId(orderId)) return null
   const admin = createAdminClient()
 
   const { data: invoice, error } = await admin
@@ -460,6 +482,8 @@ export async function updateOrderStatus(
   status: OrderStatus,
 ): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+
+  if (invalidId(orderId)) return { error: 'Invalid order id.' }
 
   const parsed = UpdateOrderStatusSchema.safeParse({ status })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
@@ -505,6 +529,7 @@ export async function updateOrderStatus(
 
 export async function deleteOrder(id: string): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+  if (invalidId(id)) return { error: 'Invalid order id.' }
   const admin = createAdminClient()
 
   const { data: order, error: fetchError } = await admin
@@ -552,6 +577,8 @@ export async function updatePaymentStatus(
   payment_status: PaymentStatus,
 ): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+
+  if (invalidId(orderId)) return { error: 'Invalid order id.' }
 
   const parsed = UpdatePaymentStatusSchema.safeParse({ payment_status })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
@@ -741,7 +768,7 @@ export async function getProducts(params?: {
     .range(from, to)
 
   if (q) {
-    query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%,description.ilike.%${q}%`)
+    query = query.or(ilikeAnyColumn(['name', 'category', 'description'], q))
   }
 
   const { data, error, count } = await query
@@ -761,6 +788,7 @@ export async function getProducts(params?: {
 
 export async function getProduct(id: string): Promise<Product | null> {
   await assertAdmin()
+  if (invalidId(id)) return null
   const admin = createAdminClient()
 
   const { data, error } = await admin
@@ -823,6 +851,8 @@ export async function updateProduct(
 ): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
 
+  if (invalidId(id)) return { error: 'Invalid product id.' }
+
   const parsed = ProductSchema.safeParse({
     name: formData.get('name'),
     category: formData.get('category'),
@@ -875,6 +905,7 @@ export async function updateProduct(
 
 export async function deleteProduct(id: string): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+  if (invalidId(id)) return { error: 'Invalid product id.' }
   const admin = createAdminClient()
 
   const existing = await getProduct(id)
@@ -929,16 +960,30 @@ export async function deleteProduct(id: string): Promise<{ error?: string }> {
   return {}
 }
 
+const UpdateStockStatusSchema = z.object({
+  stock_status: z.enum(['in_stock', 'low', 'out_of_stock']),
+})
+
 export async function updateStockStatus(
   id: string,
   stock_status: StockStatus,
 ): Promise<{ error?: string }> {
   const adminId = await assertAdmin()
+
+  if (invalidId(id)) return { error: 'Invalid product id.' }
+
+  // This was the one status-writing action with no schema of its own — the
+  // value went from the client straight into the update, leaving the column's
+  // CHECK constraint as the only thing rejecting a bad one (as a raw database
+  // error). Validated here like every sibling action.
+  const parsed = UpdateStockStatusSchema.safeParse({ stock_status })
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+
   const admin = createAdminClient()
 
   const { error } = await admin
     .from('products')
-    .update({ stock_status })
+    .update({ stock_status: parsed.data.stock_status })
     .eq('id', id)
 
   if (error) {

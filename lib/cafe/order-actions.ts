@@ -10,13 +10,28 @@ import { INVOICE_SIGNED_URL_TTL_SECONDS } from '@/lib/invoice/storage'
 import { sendPushToAdmins } from '@/lib/push/send'
 import type { Product, CafeProductPrice, PaymentType, InvoiceDownload } from '@/lib/types'
 
+// Upper bounds on what one order may contain. The schema previously bounded
+// quantity only from below (`positive()`), so a hand-crafted request could ask
+// for 2^31 units across an unbounded number of lines — which fans out into an
+// unbounded `in (...)` lookup and can push total_amount past the column's
+// numeric(10,2) range, turning a rejected order into a raw database error.
+// These ceilings sit far above any real wholesale order.
+const MAX_LINE_QUANTITY = 10_000
+const MAX_ORDER_LINES = 100
+// numeric(10,2) tops out at 99,999,999.99 — stop short of it with a message
+// the café can act on rather than letting the insert fail.
+const MAX_ORDER_TOTAL = 10_000_000
+
 const OrderItemSchema = z.object({
   product_id: z.string().uuid(),
-  quantity: z.number().int().positive(),
+  quantity: z.number().int().positive().max(MAX_LINE_QUANTITY, 'Quantity is too large'),
 })
 
 const PlaceOrderSchema = z.object({
-  items: z.array(OrderItemSchema).min(1, 'Order must have at least one item'),
+  items: z
+    .array(OrderItemSchema)
+    .min(1, 'Order must have at least one item')
+    .max(MAX_ORDER_LINES, 'Order has too many line items'),
   payment_type: z.enum(['cash', 'credit']),
 })
 
@@ -92,6 +107,10 @@ export async function placeOrder(input: {
     return { product_id: item.product_id, quantity: item.quantity, unit_price_at_time_of_order: unit_price }
   })
 
+  if (total_amount > MAX_ORDER_TOTAL) {
+    return { error: 'Order total is too large. Please split it into smaller orders.' }
+  }
+
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .insert({
@@ -164,10 +183,17 @@ export async function getInvoiceDownloadUrl(orderId: string): Promise<InvoiceDow
   const { user } = await getCachedUser()
   if (!user) return null
 
+  // Scoped to the caller's own café explicitly, via an inner join on the
+  // parent order, rather than leaving `invoices_select_own` as the only thing
+  // standing between an guessed order id and someone else's invoice. Same
+  // single round trip as before — the join is what the RLS policy's EXISTS
+  // subquery was already doing — so this costs nothing and means an RLS
+  // regression can't silently become an IDOR.
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('invoice_number, pdf_path')
+    .select('invoice_number, pdf_path, orders!inner(cafe_id)')
     .eq('order_id', orderId)
+    .eq('orders.cafe_id', user.id)
     .single<{ invoice_number: string; pdf_path: string }>()
 
   if (error || !invoice) {
