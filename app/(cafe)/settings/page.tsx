@@ -1,31 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
-import { getCachedUser } from '@/lib/supabase/user'
-import { redirect } from 'next/navigation'
+import { requireActiveCafe } from '@/lib/cafe/require-cafe'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { PageMasthead } from '@/components/ui/page-masthead'
 import { ProfileForm } from '@/components/cafe/profile-form'
 import { ChangePasswordForm } from '@/components/cafe/change-password-form'
 import { SignOutButton } from '@/components/sign-out-button'
-import type { Cafe } from '@/lib/types'
-import logger from '@/lib/logger'
 
 export const metadata = { title: 'Account Settings — Sherpa Sips' }
 
 export default async function SettingsPage() {
-  const supabase = await createClient()
-  const { user } = await getCachedUser()
-  if (!user) redirect('/login')
-
-  const { data: cafe, error } = await supabase
-    .from('cafes')
-    .select('*')
-    .eq('id', user.id)
-    .single<Cafe>()
-
-  if (error || !cafe) {
-    logger.error('Failed to load café settings', { userId: user.id, msg: error?.message })
-    redirect('/')
-  }
+  const { user, cafe } = await requireActiveCafe()
 
   return (
     <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">

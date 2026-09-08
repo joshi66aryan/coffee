@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+import { getCafeProfile } from '@/lib/cafe/require-cafe'
 import { OnboardingForm } from '@/components/cafe/onboarding-form'
 import { SherpaSipsLogo } from '@/components/cafe/sherpa-sips-logo'
 import { MountainRidge } from '@/components/brand/mountain-ridge'
@@ -5,7 +7,14 @@ import { BeanScatter } from '@/components/brand/bean-scatter'
 
 export const metadata = { title: 'Set Up Your Café — Sherpa Sips' }
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  // Middleware used to do this routing off the back of a database lookup it
+  // ran on every request. Only the two pages that actually depend on café
+  // status pay for it now.
+  const { user, cafe } = await getCafeProfile()
+  if (!user) redirect('/login')
+  if (cafe) redirect(cafe.status === 'active' ? '/' : '/pending')
+
   return (
     <main className="flex min-h-screen flex-col lg:flex-row">
       {/* ---- Brand panel -------------------------------------------------- */}

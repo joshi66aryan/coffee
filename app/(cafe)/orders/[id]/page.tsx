@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCachedUser } from '@/lib/supabase/user'
+import { requireActiveCafe } from '@/lib/cafe/require-cafe'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
@@ -33,7 +34,8 @@ export default async function OrderDetailPage({
   // The invoice lookup doesn't depend on the order row, so it runs alongside
   // it rather than after — it was adding a serial database round trip plus a
   // storage signed-URL call to every order detail render.
-  const [orderResult, itemsResult, invoice] = await Promise.all([
+  const [, orderResult, itemsResult, invoice] = await Promise.all([
+    requireActiveCafe(),
     supabase.from('orders').select('*').eq('id', id).eq('cafe_id', user.id).single<Order>(),
     supabase
       .from('order_items')

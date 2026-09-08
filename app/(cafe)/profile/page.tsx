@@ -12,7 +12,8 @@ import { RepeatLastOrderCard } from '@/components/cafe/repeat-last-order-card'
 import { OutstandingBillsCard } from '@/components/cafe/outstanding-bills-card'
 import { groupItemsByOrder, type OrderItemPreviewRow } from '@/lib/cafe/order-preview'
 import { summarizeOutstandingBills } from '@/lib/cafe/outstanding-bills'
-import type { Cafe, Order } from '@/lib/types'
+import { requireActiveCafe } from '@/lib/cafe/require-cafe'
+import type { Order } from '@/lib/types'
 import logger from '@/lib/logger'
 
 export const metadata = { title: 'Account — Sherpa Sips' }
@@ -22,8 +23,8 @@ export default async function ProfilePage() {
   const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
-  const [cafeResult, lastOrderResult, unpaidOrdersResult] = await Promise.all([
-    supabase.from('cafes').select('*').eq('id', user.id).single<Cafe>(),
+  const [{ cafe }, lastOrderResult, unpaidOrdersResult] = await Promise.all([
+    requireActiveCafe(),
     supabase
       .from('orders')
       .select('*')
@@ -39,16 +40,10 @@ export default async function ProfilePage() {
       .returns<{ total_amount: number }[]>(),
   ])
 
-  if (!cafeResult.data) {
-    logger.error('Failed to load café for profile page', { userId: user.id, msg: cafeResult.error?.message })
-    redirect('/')
-  }
-
   if (unpaidOrdersResult.error) {
     logger.error('Failed to fetch outstanding bills', { userId: user.id, msg: unpaidOrdersResult.error.message })
   }
 
-  const cafe = cafeResult.data
   const lastOrder = lastOrderResult.data?.[0]
   const outstanding = summarizeOutstandingBills(unpaidOrdersResult.data ?? [])
 

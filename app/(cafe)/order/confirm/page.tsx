@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCachedUser } from '@/lib/supabase/user'
+import { requireActiveCafe } from '@/lib/cafe/require-cafe'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Check } from 'lucide-react'
@@ -34,6 +35,8 @@ export default async function ConfirmPage({
   const supabase = await createClient()
   const { user } = await getCachedUser()
   if (!user) redirect('/login')
+
+  await requireActiveCafe()
 
   const { data: order, error } = await supabase
     .from('orders')

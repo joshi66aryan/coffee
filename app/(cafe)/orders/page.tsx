@@ -1,33 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
-import { getCachedUser } from '@/lib/supabase/user'
-import { redirect } from 'next/navigation'
+import { requireActiveCafe } from '@/lib/cafe/require-cafe'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { CartSection } from '@/components/cafe/cart-section'
 import { CartEmptyState } from '@/components/cafe/cart-empty-state'
 import { PageMasthead } from '@/components/ui/page-masthead'
 import { isProfileComplete } from '@/lib/cafe/cart'
-import type { Cafe } from '@/lib/types'
-import logger from '@/lib/logger'
 
 export const metadata = { title: 'Cart — Sherpa Sips' }
 
 export default async function CartPage() {
-  const supabase = await createClient()
-  const { user } = await getCachedUser()
-  if (!user) redirect('/login')
+  const { cafe } = await requireActiveCafe()
 
-  const { data: cafe, error } = await supabase
-    .from('cafes')
-    .select('credit_enabled, phone, delivery_address')
-    .eq('id', user.id)
-    .single<Pick<Cafe, 'credit_enabled' | 'phone' | 'delivery_address'>>()
-
-  if (error) {
-    logger.error('Failed to fetch café for cart page', { userId: user.id, msg: error.message })
-  }
-
-  const creditEnabled = cafe?.credit_enabled ?? false
-  const profileComplete = cafe ? isProfileComplete(cafe) : false
+  const creditEnabled = cafe.credit_enabled
+  const profileComplete = isProfileComplete(cafe)
 
   return (
     <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">

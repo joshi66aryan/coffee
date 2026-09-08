@@ -12,7 +12,8 @@ import { RealtimeRefresh } from '@/components/ui/realtime-refresh'
 import { groupItemsByOrder, type OrderItemPreviewRow } from '@/lib/cafe/order-preview'
 import { parseOrderFilter } from '@/lib/cafe/order-filter'
 import { ORDERS_PAGE_SIZE } from '@/lib/cafe/constants'
-import type { Cafe, Order, OrderWithPreview } from '@/lib/types'
+import { requireActiveCafe } from '@/lib/cafe/require-cafe'
+import type { Order, OrderWithPreview } from '@/lib/types'
 import logger from '@/lib/logger'
 
 export const metadata = { title: 'Your Orders — Sherpa Sips' }
@@ -44,8 +45,8 @@ export default async function ProfileOrdersPage({ searchParams }: PageProps) {
     ordersQuery = ordersQuery.in('payment_status', ['pending', 'due'])
   }
 
-  const [cafeResult, ordersResult] = await Promise.all([
-    supabase.from('cafes').select('name').eq('id', user.id).single<Pick<Cafe, 'name'>>(),
+  const [{ cafe }, ordersResult] = await Promise.all([
+    requireActiveCafe(),
     ordersQuery.returns<Order[]>(),
   ])
 
@@ -53,7 +54,6 @@ export default async function ProfileOrdersPage({ searchParams }: PageProps) {
     logger.error('Failed to fetch orders', { userId: user.id, msg: ordersResult.error.message })
   }
 
-  const cafe = cafeResult.data
   const pagedOrders = ordersResult.data ?? []
   const total = ordersResult.count ?? 0
 
@@ -80,7 +80,7 @@ export default async function ProfileOrdersPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
       <RealtimeRefresh table="orders" filter={`cafe_id=eq.${user.id}`} />
-      <CafeHeader cafeName={cafe?.name} />
+      <CafeHeader cafeName={cafe.name} />
 
       <div className="mx-auto max-w-2xl px-4 sm:px-6">
         <PageMasthead

@@ -11,7 +11,8 @@ import { RealtimeRefresh } from '@/components/ui/realtime-refresh'
 import { getPushSubscriptionStatus } from '@/lib/push/status'
 import { groupItemsByOrder, type OrderItemPreviewRow } from '@/lib/cafe/order-preview'
 import { getCatalogProducts } from '@/lib/cafe/catalog-cache'
-import type { CafeProductPrice, Cafe, CatalogProduct, Order } from '@/lib/types'
+import { requireActiveCafe } from '@/lib/cafe/require-cafe'
+import type { CafeProductPrice, CatalogProduct, Order } from '@/lib/types'
 import logger from '@/lib/logger'
 
 export const metadata = { title: 'Shop — Sherpa Sips' }
@@ -21,8 +22,10 @@ export default async function HomePage() {
   const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
-  const [cafeResult, products, pricesResult, lastOrderResult, pushStatus] = await Promise.all([
-    supabase.from('cafes').select('*').eq('id', user.id).single<Cafe>(),
+  const [{ cafe }, products, pricesResult, lastOrderResult, pushStatus] = await Promise.all([
+    // The status gate and the café row in one query — middleware used to run
+    // this on every request, before the render even started.
+    requireActiveCafe(),
     // Shared across every café, so it comes from the cross-request cache
     // rather than a per-render query. See lib/cafe/catalog-cache.ts.
     getCatalogProducts(supabase),
@@ -46,7 +49,6 @@ export default async function HomePage() {
     effective_price: overrideMap.get(p.id) ?? p.base_price,
   }))
 
-  const cafe = cafeResult.data
   const categories = [...new Set(products.map(p => p.category))]
 
   const lastOrder = lastOrderResult.data?.[0]
@@ -67,11 +69,11 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen bg-cream-100 pb-20 sm:pb-8">
       <RealtimeRefresh table="products" />
-      <CafeHeader cafeName={cafe?.name} />
+      <CafeHeader cafeName={cafe.name} />
       <NotificationPromptBanner initialSubscribed={pushStatus.subscribed} />
       <InstallPromptBanner />
 
-      <CatalogHero cafeName={cafe?.name} />
+      <CatalogHero cafeName={cafe.name} />
 
       {lastOrder && lastOrderItems.length > 0 && (
         <RepeatLastOrderCard

@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+import { getCafeProfile } from '@/lib/cafe/require-cafe'
 import { ApprovalWatcher } from '@/components/cafe/approval-watcher'
 import { SignOutButton } from '@/components/sign-out-button'
 import { SherpaSipsLogo } from '@/components/cafe/sherpa-sips-logo'
@@ -7,7 +9,12 @@ import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/cafe/cons
 
 export const metadata = { title: 'Account Pending — Sherpa Sips' }
 
-export default function PendingPage() {
+export default async function PendingPage() {
+  const { user, cafe } = await getCafeProfile()
+  if (!user) redirect('/login')
+  if (!cafe) redirect('/onboarding')
+  if (cafe.status === 'active') redirect('/')
+
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-brand-900 text-cream-200">
       <ApprovalWatcher />

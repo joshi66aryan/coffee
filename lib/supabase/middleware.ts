@@ -84,34 +84,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   // ── Café user ────────────────────────────────────────────────────────────────
-  const { data: cafe } = await supabase
-    .from('cafes')
-    .select('status')
-    .eq('id', user.id)
-    .single()
-
-  // No profile → must complete onboarding
-  if (!cafe) {
-    if (!pathname.startsWith('/onboarding')) {
-      return NextResponse.redirect(new URL('/onboarding', url))
-    }
-    return protect(supabaseResponse)
-  }
-
-  // Pending or rejected → show holding screen
-  if (cafe.status === 'pending' || cafe.status === 'rejected') {
-    if (!pathname.startsWith('/pending')) {
-      return NextResponse.redirect(new URL('/pending', url))
-    }
-    return protect(supabaseResponse)
-  }
-
-  // Active café user — block restricted routes
-  if (
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/onboarding') ||
-    pathname.startsWith('/pending')
-  ) {
+  // Whether the café is onboarded and approved used to be read from the
+  // database right here, on every single request — a round trip that blocked
+  // the render before it started, and that each page then repeated for the
+  // same row. That gate now lives next to the data it protects
+  // (lib/cafe/require-cafe.ts), and /onboarding and /pending route
+  // themselves. Middleware makes no network calls at all any more.
+  if (pathname.startsWith('/admin')) {
     return NextResponse.redirect(new URL('/', url))
   }
 

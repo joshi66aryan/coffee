@@ -1,5 +1,4 @@
-import { getCachedUser } from '@/lib/supabase/user'
-import { redirect } from 'next/navigation'
+import { requireActiveCafe } from '@/lib/cafe/require-cafe'
 import { ChevronRight, Info, MessageCircle } from 'lucide-react'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { PageMasthead } from '@/components/ui/page-masthead'
@@ -11,10 +10,10 @@ import { getPushSubscriptionStatus } from '@/lib/push/status'
 export const metadata = { title: 'App Settings — Sherpa Sips' }
 
 export default async function AppSettingsPage() {
-  const { user } = await getCachedUser()
-  if (!user) redirect('/login')
-
-  const { subscribed } = await getPushSubscriptionStatus()
+  const [, { subscribed }] = await Promise.all([
+    requireActiveCafe(),
+    getPushSubscriptionStatus(),
+  ])
 
   return (
     <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
