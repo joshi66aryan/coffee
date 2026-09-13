@@ -34,13 +34,19 @@ export async function subscribeToPush(subscription: unknown): Promise<{ error?: 
   const { user, error: authError } = await getCachedUser()
   if (authError || !user) return { error: 'Not authenticated' }
 
+  // Only used to decide what to revalidate below. The row's own `role` is no
+  // longer written from here at all: migration 013 takes the column away from
+  // the `authenticated` grant and assigns it from a trigger reading the same
+  // signed claim. Naming it in this payload would now fail the write — which is
+  // the point, because a client calling PostgREST directly could name it too,
+  // and `role: 'admin'` on a row the caller legitimately owns passed every
+  // policy on the table.
   const role = user.app_metadata?.role === 'admin' ? 'admin' : 'cafe'
 
   const supabase = await createClient()
   const { error } = await supabase.from('push_subscriptions').upsert(
     {
       user_id: user.id,
-      role,
       endpoint: parsed.data.endpoint,
       p256dh: parsed.data.keys.p256dh,
       auth_key: parsed.data.keys.auth,

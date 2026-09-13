@@ -67,6 +67,14 @@ export async function updateSession(request: NextRequest) {
 
   // ── Authenticated ────────────────────────────────────────────────────────────
 
+  // Finishing a password reset. The session exists — /auth/confirm just minted
+  // it from the recovery token — but the person still has no password they
+  // know. Both redirects below would bounce them off this page before they
+  // could set one, and for an admin that bounce is unconditional.
+  if (pathname.startsWith('/reset-password')) {
+    return protect(supabaseResponse)
+  }
+
   // Already on /login → send to home
   if (pathname.startsWith('/login')) {
     const dest = user.app_metadata?.role === 'admin' ? '/admin' : '/'

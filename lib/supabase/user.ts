@@ -65,3 +65,24 @@ export const getCachedUser = cache(
     return getAuthUser(supabase)
   },
 )
+
+/**
+ * Whether this account has an email/password credential.
+ *
+ * Not a token claim — `identities` only comes back from the Auth API — so this
+ * is a real round trip, and it belongs only on the settings page, where it
+ * decides whether the password form asks for a current password or is offering
+ * to set a first one for a Google-only account.
+ *
+ * Defaults to `true` if the lookup fails: the safe direction is to ask for the
+ * current password, not to skip the challenge. `changePassword` re-derives this
+ * server-side regardless, so this answer only shapes the form.
+ */
+export const hasPasswordIdentity = cache(async (): Promise<boolean> => {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data.user) return true
+
+  return (data.user.identities ?? []).some(identity => identity.provider === 'email')
+})

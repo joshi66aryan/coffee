@@ -56,7 +56,12 @@ test.describe('Login page — browser UI', () => {
     await page.getByLabel(/^email$/i).fill('cafe@example.com')
     await page.getByLabel(/^password$/i).fill('wrongpassword')
     await page.getByRole('button', { name: /^sign in$/i }).click()
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 })
+    // Scoped to the form: Next.js's own route announcer is also role="alert"
+    // and is always present but empty, so an unscoped query matches two
+    // elements and fails Playwright's strict mode.
+    await expect(page.locator('form [role="alert"]')).toHaveText(/invalid email or password/i, {
+      timeout: 15000,
+    })
   })
 
   test('switching to sign-up via the toggle phrase shows live password strength feedback', async ({ page }) => {

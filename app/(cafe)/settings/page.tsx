@@ -1,4 +1,5 @@
 import { requireActiveCafe } from '@/lib/cafe/require-cafe'
+import { hasPasswordIdentity } from '@/lib/supabase/user'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { PageMasthead } from '@/components/ui/page-masthead'
 import { ProfileForm } from '@/components/cafe/profile-form'
@@ -9,6 +10,7 @@ export const metadata = { title: 'Account Settings — Sherpa Sips' }
 
 export default async function SettingsPage() {
   const { user, cafe } = await requireActiveCafe()
+  const hasPassword = await hasPasswordIdentity()
 
   return (
     <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
@@ -45,7 +47,7 @@ export default async function SettingsPage() {
           </div>
 
           <ProfileForm cafe={cafe} email={user.email ?? ''} />
-          <ChangePasswordForm />
+          <ChangePasswordForm hasPassword={hasPassword} />
 
           <SignOutButton
             showLabel

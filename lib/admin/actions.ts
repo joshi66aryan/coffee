@@ -723,13 +723,35 @@ async function deleteStorageImage(publicUrl: string): Promise<void> {
   if (error) logger.warn('Failed to delete product image from storage', { path, msg: error.message })
 }
 
+// The extensions the browser-side resize step can actually produce
+// (lib/admin/image-resize.ts re-encodes to WebP, or JPEG where WebP is
+// unavailable), plus the formats a raw passthrough may keep.
+const ALLOWED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif'])
+const DEFAULT_IMAGE_EXTENSION = 'webp'
+
 // Returns a signed upload URL so the browser can PUT the file directly to Supabase Storage
 // without routing the binary through Next.js and without needing storage RLS write access.
+//
+// The extension used to be taken straight off the client-supplied filename with
+// no allowlist, so the storage key was partly attacker-chosen — and this bucket
+// is public-read, meaning the object is served back under whatever extension it
+// was given. Admin-only, so the reachable impact was low, but "only an admin
+// can do it" is not a reason for the one piece of client input here to be
+// unvalidated.
+//
+// Note what this does and does not cover: it constrains the *key*, not the
+// bytes. The file goes straight from the browser to Storage, so no code here
+// ever sees it. Content type and size are enforced by the bucket itself
+// (migration 013 sets allowed_mime_types and file_size_limit), which is the
+// only place in this design that handles the upload.
 export async function createProductImageUploadUrl(
   filename: string,
 ): Promise<{ signedUrl: string; path: string; publicUrl: string } | { error: string }> {
   const adminId = await assertAdmin()
-  const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg'
+
+  const rawExt = filename.split('.').pop()?.toLowerCase() ?? ''
+  const ext = ALLOWED_IMAGE_EXTENSIONS.has(rawExt) ? rawExt : DEFAULT_IMAGE_EXTENSION
+
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
   const admin = createAdminClient()
 

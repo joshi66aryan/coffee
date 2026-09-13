@@ -4,12 +4,17 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, MailCheck } from 'lucide-react'
-import { signInWithEmail, signUpWithEmail } from '@/lib/cafe/actions'
+import {
+  requestPasswordReset,
+  resendConfirmationEmail,
+  signInWithEmail,
+  signUpWithEmail,
+} from '@/lib/cafe/actions'
 import { createClient } from '@/lib/supabase/client'
 import { PasswordStrengthMeter } from '@/components/cafe/password-strength-meter'
 import logger from '@/lib/logger'
 
-type EmailMode = 'signin' | 'signup'
+type EmailMode = 'signin' | 'signup' | 'forgot'
 
 function GoogleIcon() {
   return (
@@ -31,21 +36,56 @@ export function LoginForm({ initialError }: { initialError?: string } = {}) {
   const [showPassword, setShowPassword] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
+  // Sign-in failed specifically because the address was never confirmed —
+  // the one failure that has a self-service fix, so it gets an action.
+  const [needsConfirmation, setNeedsConfirmation] = useState(false)
+  const [notice, setNotice] = useState('')
 
   const [error, setError] = useState(initialError ?? '')
   const [isPending, startTransition] = useTransition()
   const [isGooglePending, setIsGooglePending] = useState(false)
 
+  function switchMode(next: EmailMode) {
+    setEmailMode(next)
+    setError('')
+    setNotice('')
+    setNeedsConfirmation(false)
+  }
+
   function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setNotice('')
+    setNeedsConfirmation(false)
 
     startTransition(async () => {
+      if (emailMode === 'forgot') {
+        const result = await requestPasswordReset(email)
+        if (result.error) { setError(result.error); return }
+        // Deliberately the same message whether or not an account exists.
+        setNotice(`If an account exists for ${email}, a reset link is on its way.`)
+        return
+      }
+
       const action = emailMode === 'signin' ? signInWithEmail : signUpWithEmail
       const result = await action(email, password)
-      if (result.error) { setError(result.error); return }
+      if (result.error) {
+        setError(result.error)
+        if ('needsConfirmation' in result && result.needsConfirmation) setNeedsConfirmation(true)
+        return
+      }
       if ('confirm' in result && result.confirm) { setAwaitingConfirm(true); return }
       if (result.redirect) router.push(result.redirect)
+    })
+  }
+
+  function handleResendConfirmation() {
+    setError('')
+    startTransition(async () => {
+      const result = await resendConfirmationEmail(email)
+      if (result.error) { setError(result.error); return }
+      setNeedsConfirmation(false)
+      setNotice(`A new confirmation link is on its way to ${email}.`)
     })
   }
 
@@ -78,7 +118,7 @@ export function LoginForm({ initialError }: { initialError?: string } = {}) {
         </p>
         <button
           type="button"
-          onClick={() => { setAwaitingConfirm(false); setEmailMode('signin') }}
+          onClick={() => { setAwaitingConfirm(false); switchMode('signin') }}
           className="btn btn-outline btn-sm mt-7"
         >
           Back to sign in
@@ -89,14 +129,18 @@ export function LoginForm({ initialError }: { initialError?: string } = {}) {
 
   return (
     <div className="animate-rise">
-      <p className="eyebrow">{emailMode === 'signin' ? 'Welcome back' : 'Join the trail'}</p>
+      <p className="eyebrow">
+        {emailMode === 'signin' ? 'Welcome back' : emailMode === 'signup' ? 'Join the trail' : 'Account recovery'}
+      </p>
       <h1 className="display-lg mt-3 text-brand-900">
-        {emailMode === 'signin' ? 'Sign in' : 'Create account'}
+        {emailMode === 'signin' ? 'Sign in' : emailMode === 'signup' ? 'Create account' : 'Reset password'}
       </h1>
       <p className="mt-3 text-sm text-gray-500">
         {emailMode === 'signin'
           ? 'Access your café’s catalog, pricing and order history.'
-          : 'Set up your café account to start ordering.'}
+          : emailMode === 'signup'
+            ? 'Set up your café account to start ordering.'
+            : 'Enter your email and we’ll send you a link to set a new password.'}
       </p>
 
       <div className="rule mt-7" />
@@ -116,8 +160,20 @@ export function LoginForm({ initialError }: { initialError?: string } = {}) {
           />
         </div>
 
+        {emailMode !== 'forgot' && (
         <div>
-          <label htmlFor="password" className="field-label">Password</label>
+          <div className="flex items-baseline justify-between gap-3">
+            <label htmlFor="password" className="field-label">Password</label>
+            {emailMode === 'signin' && (
+              <button
+                type="button"
+                onClick={() => switchMode('forgot')}
+                className="text-xs font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-900"
+              >
+                Forgot password?
+              </button>
+            )}
+          </div>
           <div className="relative">
             <input
               id="password"
@@ -142,6 +198,7 @@ export function LoginForm({ initialError }: { initialError?: string } = {}) {
           </div>
           {emailMode === 'signup' && <PasswordStrengthMeter password={password} />}
         </div>
+        )}
 
         {emailMode === 'signup' && (
           <label className="flex items-start gap-2.5 text-sm text-gray-600">
@@ -161,48 +218,82 @@ export function LoginForm({ initialError }: { initialError?: string } = {}) {
         )}
 
         {error && (
-          <p role="alert" className="border-l-2 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
+          <div role="alert" className="border-l-2 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p>{error}</p>
+            {needsConfirmation && (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={isPending}
+                className="mt-2 font-semibold underline underline-offset-2 hover:text-red-900"
+              >
+                {isPending ? 'Sending…' : 'Send a new confirmation link'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {notice && (
+          <p role="status" className="border-l-2 border-olive-500 bg-olive-50 px-3 py-2 text-sm text-olive-700">
+            {notice}
           </p>
         )}
 
         <button
           type="submit"
-          disabled={isPending || !email || !password || (emailMode === 'signup' && !agreedToTerms)}
+          disabled={
+            isPending ||
+            !email ||
+            (emailMode !== 'forgot' && !password) ||
+            (emailMode === 'signup' && !agreedToTerms)
+          }
           className="btn btn-primary btn-block btn-lg"
         >
           {isPending
-            ? emailMode === 'signin' ? 'Signing in…' : 'Creating account…'
-            : emailMode === 'signin' ? 'Sign in' : 'Create account'}
+            ? emailMode === 'signin' ? 'Signing in…' : emailMode === 'signup' ? 'Creating account…' : 'Sending…'
+            : emailMode === 'signin' ? 'Sign in' : emailMode === 'signup' ? 'Create account' : 'Send reset link'}
         </button>
       </form>
 
-      <div className="my-7 flex items-center gap-4">
-        <span className="h-px flex-1 bg-cream-300" />
-        <span className="eyebrow-sm text-gray-400">Or</span>
-        <span className="h-px flex-1 bg-cream-300" />
-      </div>
+      {emailMode === 'forgot' ? (
+        <button
+          type="button"
+          onClick={() => switchMode('signin')}
+          className="mt-7 w-full text-center text-sm text-gray-500 transition-colors hover:text-brand-900"
+        >
+          Remembered it?{' '}
+          <span className="font-semibold text-brand-700 underline underline-offset-2">Back to sign in</span>
+        </button>
+      ) : (
+        <>
+          <div className="my-7 flex items-center gap-4">
+            <span className="h-px flex-1 bg-cream-300" />
+            <span className="eyebrow-sm text-gray-400">Or</span>
+            <span className="h-px flex-1 bg-cream-300" />
+          </div>
 
-      <button
-        type="button"
-        onClick={handleGoogleSignIn}
-        disabled={isGooglePending}
-        className="btn btn-outline btn-block"
-      >
-        <GoogleIcon />
-        Continue with Google
-      </button>
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isGooglePending}
+            className="btn btn-outline btn-block"
+          >
+            <GoogleIcon />
+            Continue with Google
+          </button>
 
-      <button
-        type="button"
-        onClick={() => { setEmailMode(emailMode === 'signin' ? 'signup' : 'signin'); setError('') }}
-        className="mt-7 w-full text-center text-sm text-gray-500 transition-colors hover:text-brand-900"
-      >
-        {emailMode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-        <span className="font-semibold text-brand-700 underline underline-offset-2">
-          {emailMode === 'signin' ? 'Sign up' : 'Sign in'}
-        </span>
-      </button>
+          <button
+            type="button"
+            onClick={() => switchMode(emailMode === 'signin' ? 'signup' : 'signin')}
+            className="mt-7 w-full text-center text-sm text-gray-500 transition-colors hover:text-brand-900"
+          >
+            {emailMode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+            <span className="font-semibold text-brand-700 underline underline-offset-2">
+              {emailMode === 'signin' ? 'Sign up' : 'Sign in'}
+            </span>
+          </button>
+        </>
+      )}
     </div>
   )
 }

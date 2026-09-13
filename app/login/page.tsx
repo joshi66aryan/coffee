@@ -18,6 +18,13 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams
 
+  const errorMessage =
+    error === 'oauth'
+      ? 'Google sign-in failed — please try again.'
+      : error === 'link'
+        ? 'That link has expired or has already been used. Request a new one below.'
+        : undefined
+
   return (
     <main className="flex min-h-screen flex-col lg:flex-row">
       {/* ---- Brand panel: bean → hills → Himalaya → peak ---------------- */}
@@ -60,9 +67,7 @@ export default async function LoginPage({
       {/* ---- Form panel -------------------------------------------------- */}
       <section className="texture-paper flex flex-1 items-center justify-center bg-cream-100 px-5 py-14 sm:px-10">
         <div className="w-full max-w-sm">
-          <LoginForm
-            initialError={error === 'oauth' ? 'Google sign-in failed — please try again.' : undefined}
-          />
+          <LoginForm initialError={errorMessage} />
         </div>
       </section>
     </main>

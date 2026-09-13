@@ -12,21 +12,29 @@ vi.mock('next/server', () => ({ after: vi.fn() }))
 vi.mock('@/lib/invoice/generate', () => ({ generateInvoiceForOrder: vi.fn() }))
 vi.mock('@/lib/push/send', () => ({ sendPushToAdmins: vi.fn() }))
 
+const mockConsumeRateLimit = vi.fn()
+vi.mock('@/lib/rate-limit', () => ({
+  consumeRateLimit: (...args: unknown[]) => mockConsumeRateLimit(...args),
+  retryAfterMessage: () => 'Please try again in a minute.',
+}))
+
 const CAFE_ID = '22222222-2222-4222-8222-222222222222'
 const OTHER_CAFE_ID = '99999999-9999-4999-8999-999999999999'
 const PRODUCT_ID = '33333333-3333-4333-8333-333333333333'
 const ORDER_ID = '11111111-1111-4111-8111-111111111111'
 
-// Records every insert so a test can assert on what actually reached the
+// Records every write so a test can assert on what actually reached the
 // database, and every filter so invoice scoping can be checked.
 interface Recorded {
   inserts: { table: string; payload: unknown }[]
+  rpcs: { fn: string; args: Record<string, unknown> }[]
   filters: { column: string; value: unknown }[]
 }
 
 let recorded: Recorded
 let tableData: Record<string, unknown>
 let signedUrlResult: unknown
+let rpcResult: unknown
 
 function makeQuery(table: string) {
   const query: Record<string, unknown> = {}
@@ -49,7 +57,6 @@ function makeQuery(table: string) {
       recorded.inserts.push({ table, payload })
       return { ...query, then: undefined, select: chain }
     },
-    // Awaiting the builder directly (the order_items insert does this).
     then: (resolve: (v: unknown) => void) => resolve(result()),
   })
 
@@ -65,11 +72,24 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
+// The order write now goes through the service-role client, which is the only
+// role migration 013 grants EXECUTE on create_order_with_items. Recording the
+// RPC is how these tests see what was actually written.
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => ({
+    rpc: async (fn: string, args: Record<string, unknown>) => {
+      recorded.rpcs.push({ fn, args })
+      return rpcResult
+    },
+  }),
+}))
+
 const { placeOrder, getInvoiceDownloadUrl } = await import('@/lib/cafe/order-actions')
 
 beforeEach(() => {
   vi.clearAllMocks()
-  recorded = { inserts: [], filters: [] }
+  recorded = { inserts: [], rpcs: [], filters: [] }
+  mockConsumeRateLimit.mockResolvedValue({ allowed: true, retryAfter: 0 })
   mockGetCachedUser.mockResolvedValue({
     user: { id: CAFE_ID, email: null, app_metadata: {} },
     error: null,
@@ -98,22 +118,26 @@ beforeEach(() => {
       error: null,
     },
     cafe_product_prices: { data: [], error: null },
-    orders: { data: { id: ORDER_ID }, error: null },
-    order_items: { data: null, error: null },
   }
+  rpcResult = { data: ORDER_ID, error: null }
   signedUrlResult = { data: { signedUrl: 'https://storage.example/signed' }, error: null }
 })
 
-function orderItemsInsert() {
-  return recorded.inserts.find(i => i.table === 'order_items')?.payload as
-    | { product_id: string; quantity: number; unit_price_at_time_of_order: number }[]
+/** Arguments the order-writing function was called with, if it was called. */
+function orderRpc() {
+  return recorded.rpcs.find(r => r.fn === 'create_order_with_items')?.args as
+    | {
+        p_cafe_id: string
+        p_payment_type: string
+        p_total_amount: number
+        p_items: { product_id: string; quantity: number; unit_price_at_time_of_order: number }[]
+      }
     | undefined
 }
 
-function ordersInsert() {
-  return recorded.inserts.find(i => i.table === 'orders')?.payload as
-    | { total_amount: number; cafe_id: string; payment_status: string }
-    | undefined
+/** True when nothing at all was written — no RPC and no direct insert. */
+function nothingWasWritten() {
+  return recorded.rpcs.length === 0 && recorded.inserts.length === 0
 }
 
 describe('placeOrder — pricing is never taken from the client', () => {
@@ -125,8 +149,8 @@ describe('placeOrder — pricing is never taken from the client', () => {
 
     expect(result).toEqual({ orderId: ORDER_ID })
     // 900 from the products row, not the 1 the caller asked for.
-    expect(orderItemsInsert()?.[0].unit_price_at_time_of_order).toBe(900)
-    expect(ordersInsert()?.total_amount).toBe(1800)
+    expect(orderRpc()?.p_items[0].unit_price_at_time_of_order).toBe(900)
+    expect(orderRpc()?.p_total_amount).toBe(1800)
   })
 
   it('prefers this café’s negotiated override over the base price', async () => {
@@ -137,8 +161,8 @@ describe('placeOrder — pricing is never taken from the client', () => {
 
     await placeOrder({ items: [{ product_id: PRODUCT_ID, quantity: 2 }], payment_type: 'cash' })
 
-    expect(orderItemsInsert()?.[0].unit_price_at_time_of_order).toBe(750)
-    expect(ordersInsert()?.total_amount).toBe(1500)
+    expect(orderRpc()?.p_items[0].unit_price_at_time_of_order).toBe(750)
+    expect(orderRpc()?.p_total_amount).toBe(1500)
   })
 
   it('records the order against the authenticated café, not a supplied cafe_id', async () => {
@@ -148,17 +172,72 @@ describe('placeOrder — pricing is never taken from the client', () => {
       cafe_id: OTHER_CAFE_ID,
     } as never)
 
-    expect(ordersInsert()?.cafe_id).toBe(CAFE_ID)
+    expect(orderRpc()?.p_cafe_id).toBe(CAFE_ID)
   })
 
-  it('ignores a client-supplied payment_status', async () => {
+  it('never forwards a client-supplied payment_status to the database', async () => {
     await placeOrder({
       items: [{ product_id: PRODUCT_ID, quantity: 1 }],
       payment_type: 'cash',
       payment_status: 'paid',
     } as never)
 
-    expect(ordersInsert()?.payment_status).toBe('pending')
+    // The column is not a parameter of create_order_with_items at all — the
+    // function hard-codes 'pending' — so the client's value has nowhere to go.
+    expect(Object.keys(orderRpc() ?? {})).not.toContain('payment_status')
+    expect(JSON.stringify(orderRpc())).not.toContain('paid')
+  })
+})
+
+describe('placeOrder — the café session never writes order rows itself', () => {
+  it('writes the order and its items through one privileged call, not two client inserts', async () => {
+    await placeOrder({
+      items: [
+        { product_id: PRODUCT_ID, quantity: 2 },
+        { product_id: PRODUCT_ID, quantity: 3 },
+      ],
+      payment_type: 'cash',
+    })
+
+    // Migration 013 revokes INSERT on both tables from `authenticated`, so an
+    // insert issued through the café's own session would now fail outright —
+    // and, before it was revoked, was what let a café append free line items
+    // to an order it had already placed.
+    expect(recorded.inserts.filter(i => i.table === 'orders')).toHaveLength(0)
+    expect(recorded.inserts.filter(i => i.table === 'order_items')).toHaveLength(0)
+    expect(recorded.rpcs).toHaveLength(1)
+    expect(orderRpc()?.p_items).toHaveLength(2)
+  })
+
+  it('reports a failure rather than leaving an order without its line items', async () => {
+    rpcResult = { data: null, error: { message: 'transaction rolled back' } }
+
+    const result = await placeOrder({
+      items: [{ product_id: PRODUCT_ID, quantity: 1 }],
+      payment_type: 'cash',
+    })
+
+    expect(result).toEqual({ error: 'Failed to place order. Please try again.' })
+  })
+})
+
+describe('placeOrder — rate limiting', () => {
+  it('refuses to write anything once the café is over its limit', async () => {
+    mockConsumeRateLimit.mockResolvedValue({ allowed: false, retryAfter: 60 })
+
+    const result = await placeOrder({
+      items: [{ product_id: PRODUCT_ID, quantity: 1 }],
+      payment_type: 'cash',
+    })
+
+    expect(result).toHaveProperty('error')
+    expect(nothingWasWritten()).toBe(true)
+  })
+
+  it('meters the authenticated café, not a value the caller controls', async () => {
+    await placeOrder({ items: [{ product_id: PRODUCT_ID, quantity: 1 }], payment_type: 'cash' })
+
+    expect(mockConsumeRateLimit).toHaveBeenCalledWith('placeOrder', CAFE_ID)
   })
 })
 
@@ -170,7 +249,7 @@ describe('placeOrder — input validation', () => {
     })
 
     expect(result).toHaveProperty('error')
-    expect(recorded.inserts).toHaveLength(0)
+    expect(nothingWasWritten()).toBe(true)
   })
 
   it.each([0, -5, 1.5, 2_147_483_647])('rejects quantity %s', async quantity => {
@@ -180,7 +259,7 @@ describe('placeOrder — input validation', () => {
     })
 
     expect(result).toHaveProperty('error')
-    expect(recorded.inserts).toHaveLength(0)
+    expect(nothingWasWritten()).toBe(true)
   })
 
   it('rejects an order with more line items than any real order has', async () => {
@@ -190,7 +269,7 @@ describe('placeOrder — input validation', () => {
     })
 
     expect(result).toEqual({ error: 'Order has too many line items' })
-    expect(recorded.inserts).toHaveLength(0)
+    expect(nothingWasWritten()).toBe(true)
   })
 
   it('rejects an unknown payment type', async () => {
@@ -200,7 +279,7 @@ describe('placeOrder — input validation', () => {
     })
 
     expect(result).toHaveProperty('error')
-    expect(recorded.inserts).toHaveLength(0)
+    expect(nothingWasWritten()).toBe(true)
   })
 
   it('rejects a total that would overflow the column', async () => {
@@ -215,7 +294,7 @@ describe('placeOrder — input validation', () => {
     })
 
     expect(result).toHaveProperty('error')
-    expect(recorded.inserts.some(i => i.table === 'orders')).toBe(false)
+    expect(orderRpc()).toBeUndefined()
   })
 })
 
@@ -232,7 +311,7 @@ describe('placeOrder — account state is read from the database', () => {
     })
 
     expect(result).toEqual({ error: 'Your account is not active' })
-    expect(recorded.inserts).toHaveLength(0)
+    expect(nothingWasWritten()).toBe(true)
   })
 
   it('refuses credit terms the café has not been granted', async () => {
@@ -242,7 +321,7 @@ describe('placeOrder — account state is read from the database', () => {
     })
 
     expect(result).toEqual({ error: 'Credit is not available for your account yet' })
-    expect(recorded.inserts).toHaveLength(0)
+    expect(nothingWasWritten()).toBe(true)
   })
 
   it('refuses an order for a product that is not in the catalog', async () => {
@@ -254,6 +333,7 @@ describe('placeOrder — account state is read from the database', () => {
     })
 
     expect(result).toEqual({ error: 'One or more products not found' })
+    expect(nothingWasWritten()).toBe(true)
   })
 
   it('rejects an unauthenticated caller', async () => {
@@ -265,7 +345,7 @@ describe('placeOrder — account state is read from the database', () => {
     })
 
     expect(result).toEqual({ error: 'Not authenticated' })
-    expect(recorded.inserts).toHaveLength(0)
+    expect(nothingWasWritten()).toBe(true)
   })
 })
 

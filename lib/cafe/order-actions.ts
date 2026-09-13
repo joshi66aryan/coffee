@@ -3,8 +3,10 @@
 import { z } from 'zod'
 import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedUser } from '@/lib/supabase/user'
 import logger from '@/lib/logger'
+import { consumeRateLimit, retryAfterMessage } from '@/lib/rate-limit'
 import { generateInvoiceForOrder } from '@/lib/invoice/generate'
 import { INVOICE_SIGNED_URL_TTL_SECONDS } from '@/lib/invoice/storage'
 import { sendPushToAdmins } from '@/lib/push/send'
@@ -57,6 +59,14 @@ export async function placeOrder(input: {
   const supabase = await createClient()
   const { user, error: authError } = await getCachedUser()
   if (authError || !user) return { error: 'Not authenticated' }
+
+  // Placing an order fans out into an invoice render, a storage upload and a
+  // push to every admin device — all after the response, so a script hammering
+  // this action costs far more than the request it pays for.
+  const limit = await consumeRateLimit('placeOrder', user.id)
+  if (!limit.allowed) {
+    return { error: `Too many orders placed just now. ${retryAfterMessage(limit.retryAfter)}` }
+  }
 
   const { data: cafe, error: cafeError } = await supabase
     .from('cafes')
@@ -111,31 +121,41 @@ export async function placeOrder(input: {
     return { error: 'Order total is too large. Please split it into smaller orders.' }
   }
 
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({
-      cafe_id: user.id,
-      total_amount,
-      payment_type: parsed.data.payment_type,
-      payment_status: 'pending',
-      delivery_date: computeDeliveryDate(),
-    })
-    .select('id')
-    .single()
+  // The order row and its line items are written by one SECURITY DEFINER
+  // function, in one transaction, through the service-role client.
+  //
+  // Two things this replaces. The café session used to do both inserts itself,
+  // which meant `order_items` needed an INSERT policy — and that policy could
+  // only ask "does the parent order belong to you?", with no time bound and no
+  // price bound. A café could therefore keep appending lines to an order it
+  // placed last week at a unit price of zero, while `total_amount` (which is
+  // not café-writable) stayed where this function put it. Migration 013 removes
+  // the café's INSERT grant on both tables entirely, so that door is gone
+  // rather than narrowed.
+  //
+  // It was also two separate round trips, so a failure between them left an
+  // order with a total and no lines — a state this code could only apologise
+  // for. One call is one transaction.
+  //
+  // Everything the function is told has been established above, not accepted
+  // from the client: the café id is the authenticated user's, the status and
+  // credit checks have run, and every unit price was resolved server-side from
+  // products/cafe_product_prices.
+  const admin = createAdminClient()
+  const { data: orderId, error: orderError } = await admin.rpc('create_order_with_items', {
+    p_cafe_id: user.id,
+    p_payment_type: parsed.data.payment_type,
+    p_delivery_date: computeDeliveryDate(),
+    p_total_amount: total_amount,
+    p_items: orderItems,
+  })
 
-  if (orderError || !order) {
+  if (orderError || !orderId) {
     logger.error('Failed to create order', { userId: user.id, msg: orderError?.message })
     return { error: 'Failed to place order. Please try again.' }
   }
 
-  const { error: itemsError } = await supabase
-    .from('order_items')
-    .insert(orderItems.map(item => ({ ...item, order_id: order.id })))
-
-  if (itemsError) {
-    logger.error('Failed to insert order items', { orderId: order.id, msg: itemsError.message })
-    return { error: 'Order created but items failed to save. Please contact support.' }
-  }
+  const order = { id: orderId as string }
 
   logger.info('Order placed', { userId: user.id, orderId: order.id, total: total_amount, items: orderItems.length })
 
