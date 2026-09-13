@@ -61,3 +61,66 @@ describe('InstallPromptBanner', () => {
     })
   })
 })
+
+// ── Hydration ────────────────────────────────────────────────────────────────
+//
+// The banner threw "Hydration failed because the server rendered HTML didn't
+// match the client" in the real app, and none of the tests above could see it:
+// they all use `render()`, which is client-only, so the server render was never
+// exercised.
+//
+// The mechanism was the store. install-prompt-store.ts attaches its
+// 'beforeinstallprompt' listener at module scope from the root layout — on
+// purpose, so the event isn't missed — which means it routinely fires before
+// React hydrates. The client then had `canInstall === true` on its very first
+// pass while the server's HTML had no banner at all.
+describe('InstallPromptBanner — server rendering', () => {
+  it('renders nothing on the server even when the store says installable', async () => {
+    const { renderToString } = await import('react-dom/server')
+    fireBeforeInstallPrompt()
+
+    // The server cannot know what a browser will say about installability, so
+    // the only HTML it can correctly emit is none. This is what regressed: a
+    // `useState(getCanInstall)` initialiser happily returned true here.
+    expect(renderToString(<InstallPromptBanner />)).toBe('')
+  })
+
+  it('renders nothing on the server regardless of a stored dismissal', async () => {
+    const { renderToString } = await import('react-dom/server')
+    localStorage.setItem('sherpa-install-prompt-dismissed', '1')
+    fireBeforeInstallPrompt()
+
+    expect(renderToString(<InstallPromptBanner />)).toBe('')
+  })
+
+  it('hydrates the server HTML without a mismatch, then reveals the banner', async () => {
+    const { renderToString } = await import('react-dom/server')
+    const { hydrateRoot } = await import('react-dom/client')
+    const { act } = await import('react')
+
+    fireBeforeInstallPrompt()
+
+    const container = document.createElement('div')
+    container.innerHTML = renderToString(<InstallPromptBanner />)
+    document.body.appendChild(container)
+
+    const errors: string[] = []
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args) => {
+      errors.push(args.map(String).join(' '))
+    })
+
+    let root: ReturnType<typeof hydrateRoot>
+    await act(async () => {
+      root = hydrateRoot(container, <InstallPromptBanner />)
+    })
+
+    expect(errors.filter(e => /hydrat/i.test(e))).toEqual([])
+    spy.mockRestore()
+
+    // And the point of the exercise: it does appear, one render later.
+    expect(container.textContent).toContain('Install Sherpa Sips')
+
+    await act(async () => root!.unmount())
+    container.remove()
+  })
+})

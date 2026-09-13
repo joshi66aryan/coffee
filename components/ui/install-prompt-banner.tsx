@@ -3,18 +3,31 @@
 import { useState } from 'react'
 import { Download, X } from 'lucide-react'
 import { useInstallPrompt } from '@/lib/pwa/use-install-prompt'
+import { useStoredFlag } from '@/lib/ui/use-stored-flag'
 
 const DISMISS_KEY = 'sherpa-install-prompt-dismissed'
 
 export function InstallPromptBanner() {
-  const [dismissed, setDismissed] = useState(() =>
-    typeof window === 'undefined' ? true : localStorage.getItem(DISMISS_KEY) === '1'
-  )
+  // Read through useStoredFlag rather than a `typeof window === 'undefined'`
+  // branch in a useState initialiser. That branch is evaluated again on the
+  // client during the hydration render, where `window` *is* defined — so it
+  // read localStorage and could disagree with the HTML the server sent, which
+  // is one half of the hydration mismatch this banner used to throw. (The other
+  // half was canInstall; see lib/pwa/use-install-prompt.ts.) useStoredFlag
+  // returns null until hydration is finished, matching the server.
+  const storedDismissal = useStoredFlag(DISMISS_KEY)
+  // Writing the key doesn't notify this tab's own reader, so the dismissal is
+  // also tracked in state to hide the banner immediately.
+  const [dismissedNow, setDismissedNow] = useState(false)
   const { canInstall, promptInstall } = useInstallPrompt()
 
+  const dismissed = dismissedNow || storedDismissal === '1'
+
   function dismiss() {
-    localStorage.setItem(DISMISS_KEY, '1')
-    setDismissed(true)
+    try {
+      localStorage.setItem(DISMISS_KEY, '1')
+    } catch {}
+    setDismissedNow(true)
   }
 
   async function install() {
