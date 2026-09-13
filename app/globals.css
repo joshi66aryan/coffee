@@ -700,6 +700,14 @@ body {
    UTILITIES
    ========================================================================== */
 
+/* Clearance for the fixed mobile tab bar, which is 4rem of controls plus the
+   home-indicator inset and sits over the page rather than in its flow. Pair it
+   with an sm: override — the bar is sm:hidden. Kept here so the two cannot
+   drift apart; see components/cafe/bottom-nav.tsx. */
+@utility pb-nav {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 1rem);
+}
+
 @utility scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

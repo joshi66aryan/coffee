@@ -14,7 +14,7 @@ export default async function CartPage() {
   const profileComplete = isProfileComplete(cafe)
 
   return (
-    <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
+    <main className="min-h-screen bg-cream-100 pb-nav sm:pb-12">
       <CafeHeader />
 
       <div className="mx-auto max-w-2xl px-4 sm:px-6">

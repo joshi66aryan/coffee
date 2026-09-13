@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 // cart badge) paints immediately and only the data area waits.
 export default function CafeLoading() {
   return (
-    <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
+    <main className="min-h-screen bg-cream-100 pb-nav sm:pb-12">
       <CafeHeader />
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">

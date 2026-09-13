@@ -21,8 +21,12 @@ export function BottomNav() {
   if (keyboardOpen) return null
 
   return (
-    // Only visible on mobile — sm+ uses the CafeHeader nav
-    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 bg-brand-900 pb-[env(safe-area-inset-bottom)] sm:hidden">
+    // Only visible on mobile — sm+ uses the CafeHeader nav.
+    // Height is 4rem of controls *plus* the home-indicator inset, not 4rem
+    // total: box-sizing is border-box, so folding the inset into h-16 left a
+    // 30px content box for a 37px icon-and-label and spilled the overflow out
+    // over the page above the bar.
+    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] bg-brand-900 pb-[env(safe-area-inset-bottom)] sm:hidden">
       {CAFE_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href
         const showBadge = href === '/orders' && cartCount > 0

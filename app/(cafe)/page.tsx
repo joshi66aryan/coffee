@@ -67,7 +67,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-cream-100 pb-20 sm:pb-8">
+    <main className="min-h-screen bg-cream-100 pb-nav sm:pb-8">
       <RealtimeRefresh table="products" />
       <CafeHeader cafeName={cafe.name} />
       <NotificationPromptBanner initialSubscribed={pushStatus.subscribed} />
