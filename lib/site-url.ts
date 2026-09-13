@@ -9,10 +9,16 @@ import { headers } from 'next/headers'
  * production sign-up then receives a confirmation link pointing at
  * http://localhost:3000, and the person who clicks it lands on nothing.
  *
- * `NEXT_PUBLIC_SITE_URL` is the answer whenever it is set, because it is the
- * only source here that an incoming request cannot influence. The forwarded
- * host is a fallback for preview deployments, where the hostname is generated
- * and cannot be baked into an env var.
+ * `SITE_URL` is the answer whenever it is set, because it is the only source
+ * here that an incoming request cannot influence. The forwarded host is a
+ * fallback for preview deployments, where the hostname is generated and cannot
+ * be baked into an env var.
+ *
+ * Deliberately not `NEXT_PUBLIC_`. The value is not a secret — it is the origin
+ * already in the visitor's address bar — but nothing in the browser reads it,
+ * and the prefix would inline it into the client bundle at build time. Read
+ * from the server environment instead, changing the domain takes effect on the
+ * next request rather than requiring a rebuild.
  *
  * Host-header injection is not a redirect risk in this direction: Supabase only
  * honours a redirect target that matches its own configured allow-list, so a
@@ -20,7 +26,7 @@ import { headers } from 'next/headers'
  * it is one fewer thing resting on that.
  */
 export async function getSiteOrigin(): Promise<string> {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+  const configured = process.env.SITE_URL?.trim()
   if (configured) return configured.replace(/\/+$/, '')
 
   const headerList = await headers()
