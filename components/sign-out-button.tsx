@@ -20,6 +20,7 @@ export function SignOutButton({
       await supabase.auth.signOut()
       // Hard navigation, not router.push — clears the client router cache so
       // the browser Back button can't replay a cached authenticated page.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- the hard navigation is the point
       window.location.href = '/login'
     })
   }
