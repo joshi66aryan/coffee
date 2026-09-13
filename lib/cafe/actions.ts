@@ -389,6 +389,30 @@ export async function changePassword(
 const RECOVERY_GRACE_SECONDS = 15 * 60
 
 /**
+ * The `amr` methods that mean "this session was minted by proving control of
+ * the mailbox, just now".
+ *
+ * Supabase records `otp` — *not* `recovery` — for a session established by
+ * verifying a recovery token, which is exactly what /auth/confirm does. This
+ * set used to contain only `recovery`, so the check below could never match and
+ * every password reset failed with "your reset link has expired", for everyone,
+ * always. The unit tests did not catch it because they asserted against the
+ * value this code expected rather than the one Supabase emits; the real claim
+ * was read off a live recovery session before this was changed.
+ *
+ * `recovery` stays alongside it because nothing in the API contract promises
+ * `otp` forever.
+ *
+ * Widening to `otp` does not give up what the check is for. The danger is
+ * someone on an already signed-in browser navigating here to set a password
+ * without knowing the old one, and such a session carries `password` or
+ * `oauth` — never `otp`, which is issued only after an emailed token has been
+ * verified. That is the same proof of inbox control a password reset is
+ * supposed to demand.
+ */
+const RECOVERY_AMR_METHODS = new Set(['recovery', 'otp'])
+
+/**
  * Finishes a password reset started from an emailed recovery link.
  *
  * The session that /auth/confirm establishes for a recovery token is an
@@ -422,7 +446,9 @@ export async function completePasswordReset(
 
   const nowSeconds = Math.floor(Date.now() / 1000)
   const recovered = (amr ?? []).some(
-    entry => entry.method === 'recovery' && nowSeconds - entry.timestamp < RECOVERY_GRACE_SECONDS,
+    entry =>
+      RECOVERY_AMR_METHODS.has(entry.method) &&
+      nowSeconds - entry.timestamp < RECOVERY_GRACE_SECONDS,
   )
 
   if (!recovered) {

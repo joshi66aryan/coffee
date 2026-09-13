@@ -313,11 +313,28 @@ describe('completePasswordReset — only a recovery link may skip the challenge'
 
   const now = () => Math.floor(Date.now() / 1000)
 
+  // `otp` is what Supabase actually puts in `amr` after verifyOtp on a recovery
+  // token — read off a live session, not assumed. This suite previously only
+  // covered the `recovery` spelling the code was written against, so it passed
+  // while every real password reset in production was rejected as expired.
   it('sets the password for a session minted by a recovery link', async () => {
-    claims([{ method: 'recovery', timestamp: now() - 30 }])
+    claims([{ method: 'otp', timestamp: now() - 30 }])
 
     await expect(actions.completePasswordReset(STRONG)).resolves.toEqual({ success: true })
     expect(auth.updateUser).toHaveBeenCalledWith({ password: STRONG })
+  })
+
+  it('also accepts the `recovery` spelling, in case Supabase ever emits it', async () => {
+    claims([{ method: 'recovery', timestamp: now() - 30 }])
+
+    await expect(actions.completePasswordReset(STRONG)).resolves.toEqual({ success: true })
+  })
+
+  it('refuses an otp session that is too old to be this visit', async () => {
+    claims([{ method: 'otp', timestamp: now() - 60 * 60 }])
+
+    await expect(actions.completePasswordReset(STRONG)).resolves.toHaveProperty('error')
+    expect(auth.updateUser).not.toHaveBeenCalled()
   })
 
   // The danger this closes: an attacker on an already signed-in browser
