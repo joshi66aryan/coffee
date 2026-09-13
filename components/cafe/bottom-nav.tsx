@@ -5,14 +5,20 @@ import { usePathname } from 'next/navigation'
 import { CAFE_NAV_ITEMS } from '@/lib/cafe/nav-items'
 import { useCart } from '@/lib/cafe/use-cart'
 import { cartItemCount } from '@/lib/cafe/cart-store'
+import { useKeyboardOpen } from '@/lib/cafe/use-keyboard-open'
 
 const SHOW_ON = ['/', '/orders', '/profile']
 
 export function BottomNav() {
   const pathname = usePathname()
   const cartCount = cartItemCount(useCart())
+  const keyboardOpen = useKeyboardOpen()
 
   if (!SHOW_ON.includes(pathname)) return null
+  // Nothing here is reachable while the user is typing, and leaving it mounted
+  // is actively harmful: iOS strands a `fixed` bar mid-page once the keyboard
+  // is up. See useKeyboardOpen.
+  if (keyboardOpen) return null
 
   return (
     // Only visible on mobile — sm+ uses the CafeHeader nav
