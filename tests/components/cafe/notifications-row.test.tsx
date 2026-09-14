@@ -85,7 +85,10 @@ describe('NotificationsRow (café Account page)', () => {
     expect(screen.getByText(/can’t show notifications/i)).toBeInTheDocument()
   })
 
-  it('stays in sync with the other toggle mounted on the same page', async () => {
+  // Nothing mounts two of these at once now that App Settings has stopped
+  // repeating the switch, but the shared hook state this pins is what the
+  // home-page prompt banner and the admin toggles rely on.
+  it('reflects a subscription made by another control on the page', async () => {
     mockSubscribeBrowser.mockResolvedValue({ toJSON: () => ({ endpoint: 'https://push.example/1' }) })
     mockSubscribeToPush.mockResolvedValue({})
 

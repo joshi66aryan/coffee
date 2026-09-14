@@ -13,9 +13,8 @@ import { usePushToggle } from '@/lib/push/use-push-toggle'
  * notifications on: the `push_subscriptions` table held admin rows only.
  *
  * So the switch itself goes on the page cafés actually open, rather than one
- * more link to somewhere else. It is the single notification control for the
- * café side — Account and App Settings both render this row, and
- * `usePushToggle` keeps them in sync when both are mounted.
+ * more link to somewhere else. It is the only permanent notification control
+ * on the café side: App Settings does not repeat it.
  *
  * Flush row — belongs inside a `ListGroup`.
  */

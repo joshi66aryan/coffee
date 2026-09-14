@@ -3,18 +3,13 @@ import { Info } from 'lucide-react'
 import { CafeHeader } from '@/components/cafe/cafe-header'
 import { PageMasthead } from '@/components/ui/page-masthead'
 import { ListGroup } from '@/components/ui/list-group'
-import { NotificationsRow } from '@/components/cafe/notifications-row'
 import { ContactSupportRow } from '@/components/cafe/contact-support-row'
 import { InstallAppRow } from '@/components/cafe/install-app-row'
-import { getPushSubscriptionStatus } from '@/lib/push/status'
 
 export const metadata = { title: 'App Settings — Sherpa Sips' }
 
 export default async function AppSettingsPage() {
-  const [, { subscribed }] = await Promise.all([
-    requireActiveCafe(),
-    getPushSubscriptionStatus(),
-  ])
+  await requireActiveCafe()
 
   return (
     <main className="min-h-screen bg-cream-100 pb-24 sm:pb-12">
@@ -29,10 +24,9 @@ export default async function AppSettingsPage() {
         />
 
         <div className="space-y-5 pt-6">
-          {/* The same notification row and support row the Account page shows,
-              so the two screens can't drift into two versions of one setting. */}
+          {/* Notifications are not repeated here — the switch lives on the
+              Account page, which is the screen cafés actually open. */}
           <ListGroup>
-            <NotificationsRow initialSubscribed={subscribed} />
             <InstallAppRow />
             <ContactSupportRow />
             <div className="flex items-center gap-3.5 px-4 py-4">
