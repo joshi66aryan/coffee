@@ -15,9 +15,9 @@
  * synchronously. No timers.
  */
 
-export type CartQuantities = Record<string, number>
+import { CART_KEY } from '@/lib/ui/app-storage'
 
-const CART_KEY = 'sherpa-cart'
+export type CartQuantities = Record<string, number>
 
 // Shared frozen identity for "no cart". useSyncExternalStore re-renders
 // whenever getSnapshot returns a new reference, so every empty result has to
@@ -100,6 +100,17 @@ export function clearCart(): void {
   } catch {
     // See setCart.
   }
+  notify()
+}
+
+/**
+ * Tell every subscriber the cart changed underneath them.
+ *
+ * Exported for the one caller that empties the cart without going through
+ * `setCart`/`clearCart` — the session guard, which clears all of this app's
+ * browser state at once when the signed-in account changes.
+ */
+export function notifyCartChanged(): void {
   notify()
 }
 

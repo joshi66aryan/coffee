@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { Download, X } from 'lucide-react'
 import { useInstallPrompt } from '@/lib/pwa/use-install-prompt'
 import { useStoredFlag } from '@/lib/ui/use-stored-flag'
-
-const DISMISS_KEY = 'sherpa-install-prompt-dismissed'
+import { INSTALL_DISMISS_KEY as DISMISS_KEY } from '@/lib/ui/app-storage'
 
 export function InstallPromptBanner() {
   // Read through useStoredFlag rather than a `typeof window === 'undefined'`

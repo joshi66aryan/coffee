@@ -4,12 +4,18 @@ import { PushNotificationToggle } from '@/components/admin/push-notification-tog
 import { SignOutButton } from '@/components/sign-out-button'
 import { getPushSubscriptionStatus } from '@/lib/push/status'
 import { SherpaSipsLogo } from '@/components/cafe/sherpa-sips-logo'
+import { SessionScope } from '@/components/session-scope'
+import { getCachedUser } from '@/lib/supabase/user'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { subscribed } = await getPushSubscriptionStatus()
+  const [{ subscribed }, { user }] = await Promise.all([
+    getPushSubscriptionStatus(),
+    getCachedUser(),
+  ])
 
   return (
     <div className="min-h-screen bg-cream-100">
+      {user && <SessionScope userId={user.id} />}
       <header className="sticky top-0 z-20 bg-olive-600 text-cream-200">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-6">

@@ -9,8 +9,7 @@ import { setCart } from '@/lib/cafe/cart-store'
 import { useStoredFlag } from '@/lib/ui/use-stored-flag'
 import { useIsHydrated } from '@/lib/ui/use-is-hydrated'
 import type { OrderItemPreview } from '@/lib/types'
-
-const DISMISS_KEY = 'sherpa-buy-again-dismissed'
+import { BUY_AGAIN_DISMISS_KEY as DISMISS_KEY } from '@/lib/ui/app-storage'
 
 function formatPrice(amount: number) {
   return `Rs. ${amount.toLocaleString('en-IN')}`

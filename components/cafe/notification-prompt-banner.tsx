@@ -5,8 +5,7 @@ import { Bell, X } from 'lucide-react'
 import { usePushToggle } from '@/lib/push/use-push-toggle'
 import { useStoredFlag } from '@/lib/ui/use-stored-flag'
 import { useIsHydrated } from '@/lib/ui/use-is-hydrated'
-
-const DISMISS_KEY = 'sherpa-push-prompt-dismissed'
+import { CAFE_PUSH_DISMISS_KEY as DISMISS_KEY } from '@/lib/ui/app-storage'
 
 // Browsers refuse to show the permission prompt without a click, so this is
 // the closest thing to "notifications on by default": ask right away instead

@@ -1,8 +1,7 @@
 'use client'
 
-import { useTransition } from 'react'
 import { LogOut } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { useSignOut } from '@/lib/auth/use-sign-out'
 
 export function SignOutButton({
   showLabel = false,
@@ -12,22 +11,11 @@ export function SignOutButton({
   showLabel?: boolean
   className?: string
 }) {
-  const [isPending, startTransition] = useTransition()
-
-  function handleSignOut() {
-    startTransition(async () => {
-      const supabase = createClient()
-      await supabase.auth.signOut()
-      // Hard navigation, not router.push — clears the client router cache so
-      // the browser Back button can't replay a cached authenticated page.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- the hard navigation is the point
-      window.location.href = '/login'
-    })
-  }
+  const { signOut, isPending } = useSignOut()
 
   return (
     <button
-      onClick={handleSignOut}
+      onClick={signOut}
       disabled={isPending}
       className={className}
       aria-label="Sign out"
