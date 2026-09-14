@@ -8,6 +8,7 @@ import { ProfileHeaderCard } from '@/components/cafe/profile-header-card'
 import { ProfileQuickNav } from '@/components/cafe/profile-quick-nav'
 import { PageMasthead } from '@/components/ui/page-masthead'
 import { ContactSupportRow } from '@/components/cafe/contact-support-row'
+import { SignOutRow } from '@/components/cafe/sign-out-row'
 import { RepeatLastOrderCard } from '@/components/cafe/repeat-last-order-card'
 import { OutstandingBillsCard } from '@/components/cafe/outstanding-bills-card'
 import { groupItemsByOrder, type OrderItemPreviewRow } from '@/lib/cafe/order-preview'
@@ -103,6 +104,8 @@ export default async function ProfilePage() {
           )}
 
           <ContactSupportRow />
+
+          <SignOutRow />
         </div>
       </div>
     </main>
