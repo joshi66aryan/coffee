@@ -4,7 +4,6 @@ import { CafeHeader } from '@/components/cafe/cafe-header'
 import { PageMasthead } from '@/components/ui/page-masthead'
 import { ProfileForm } from '@/components/cafe/profile-form'
 import { ChangePasswordForm } from '@/components/cafe/change-password-form'
-import { SignOutButton } from '@/components/sign-out-button'
 
 export const metadata = { title: 'Account Settings — Sherpa Sips' }
 
@@ -48,11 +47,8 @@ export default async function SettingsPage() {
 
           <ProfileForm cafe={cafe} email={user.email ?? ''} />
           <ChangePasswordForm hasPassword={hasPassword} />
-
-          <SignOutButton
-            showLabel
-            className="btn btn-outline btn-block border-red-200! text-red-700! hover:border-red-600! hover:bg-red-50!"
-          />
+          {/* Sign out is deliberately not repeated here — it sits one level up,
+              on the Account page, where cafés go looking for it. */}
         </div>
       </div>
     </main>

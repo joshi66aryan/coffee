@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { PushNotificationToggle } from '@/components/cafe/push-notification-toggle'
+import { NotificationsRow } from '@/components/cafe/notifications-row'
 
 const mockIsPushSupported = vi.fn()
 const mockSubscribeBrowser = vi.fn()
@@ -24,38 +24,24 @@ vi.mock('@/lib/push/actions', () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   mockIsPushSupported.mockReturnValue(true)
-  // Matches initialSubscribed by default — tests that need the mount-time
-  // reconciliation to disagree with the server value set this explicitly.
   mockHasBrowserPushSubscription.mockResolvedValue(false)
 })
 
-describe('PushNotificationToggle (café)', () => {
-  it('reflects the disabled state', () => {
-    render(<PushNotificationToggle initialSubscribed={false} />)
+describe('NotificationsRow (café Account page)', () => {
+  // The point of this row: a café that has never opened App Settings still
+  // sees a labelled notification control on the page they actually visit.
+  it('is visible and off for a café that has never enabled notifications', () => {
+    render(<NotificationsRow initialSubscribed={false} />)
+    expect(screen.getByText('Order notifications')).toBeInTheDocument()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch')).toBeEnabled()
   })
 
-  it('reflects the enabled state', async () => {
-    mockHasBrowserPushSubscription.mockResolvedValue(true)
-    render(<PushNotificationToggle initialSubscribed={true} />)
-    await waitFor(() => {
-      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
-    })
-  })
-
-  it('falls back to disabled if the browser has no active subscription, even if the server thinks it does', async () => {
-    mockHasBrowserPushSubscription.mockResolvedValue(false)
-    render(<PushNotificationToggle initialSubscribed={true} />)
-    await waitFor(() => {
-      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
-    })
-  })
-
-  it('subscribes and flips to enabled on success', async () => {
+  it('subscribes and flips on when switched', async () => {
     mockSubscribeBrowser.mockResolvedValue({ toJSON: () => ({ endpoint: 'https://push.example/1' }) })
     mockSubscribeToPush.mockResolvedValue({})
 
-    render(<PushNotificationToggle initialSubscribed={false} />)
+    render(<NotificationsRow initialSubscribed={false} />)
     await userEvent.click(screen.getByRole('switch'))
 
     await waitFor(() => {
@@ -64,12 +50,12 @@ describe('PushNotificationToggle (café)', () => {
     })
   })
 
-  it('unsubscribes and flips to disabled on success', async () => {
+  it('unsubscribes and flips off when switched back', async () => {
     mockHasBrowserPushSubscription.mockResolvedValue(true)
     mockUnsubscribeBrowser.mockResolvedValue('https://push.example/1')
     mockUnsubscribeFromPush.mockResolvedValue({})
 
-    render(<PushNotificationToggle initialSubscribed={true} />)
+    render(<NotificationsRow initialSubscribed={true} />)
     await waitFor(() => expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true'))
     await userEvent.click(screen.getByRole('switch'))
 
@@ -79,22 +65,43 @@ describe('PushNotificationToggle (café)', () => {
     })
   })
 
-  it('shows an error and stays disabled when the browser denies permission', async () => {
+  it('surfaces a denied permission instead of silently staying off', async () => {
     mockSubscribeBrowser.mockRejectedValue(new Error('Notification permission denied'))
 
-    render(<PushNotificationToggle initialSubscribed={false} />)
+    render(<NotificationsRow initialSubscribed={false} />)
     await userEvent.click(screen.getByRole('switch'))
 
-    await waitFor(() => {
-      expect(screen.getByText('Notification permission denied')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('Notification permission denied')).toBeInTheDocument())
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('disables the toggle when push is unsupported', () => {
+  // Still rendered rather than hidden — an absent control is what sent the
+  // café looking for a notification setting that appeared not to exist.
+  it('stays visible and explains itself when the browser cannot do push', () => {
     mockIsPushSupported.mockReturnValue(false)
-    render(<PushNotificationToggle initialSubscribed={false} />)
+    render(<NotificationsRow initialSubscribed={false} />)
+    expect(screen.getByText('Order notifications')).toBeInTheDocument()
     expect(screen.getByRole('switch')).toBeDisabled()
-    expect(screen.getByText(/not supported in this browser/i)).toBeInTheDocument()
+    expect(screen.getByText(/can’t show notifications/i)).toBeInTheDocument()
+  })
+
+  it('stays in sync with the other toggle mounted on the same page', async () => {
+    mockSubscribeBrowser.mockResolvedValue({ toJSON: () => ({ endpoint: 'https://push.example/1' }) })
+    mockSubscribeToPush.mockResolvedValue({})
+
+    render(
+      <>
+        <NotificationsRow initialSubscribed={false} />
+        <NotificationsRow initialSubscribed={false} />
+      </>,
+    )
+
+    await userEvent.click(screen.getAllByRole('switch')[0])
+
+    await waitFor(() => {
+      for (const s of screen.getAllByRole('switch')) {
+        expect(s).toHaveAttribute('aria-checked', 'true')
+      }
+    })
   })
 })

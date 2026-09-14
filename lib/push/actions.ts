@@ -15,14 +15,15 @@ const SubscriptionSchema = z.object({
 })
 
 // The subscribed/unsubscribed state is read by the admin layout header, the
-// admin dashboard banner, and the café home/settings pages — none of that is
-// tied to the URL, so it needs an explicit revalidate or Next.js will keep
-// serving the pre-toggle state from the router cache.
+// admin dashboard banner, and the café home/account/settings pages — none of
+// that is tied to the URL, so it needs an explicit revalidate or Next.js will
+// keep serving the pre-toggle state from the router cache.
 function revalidatePushStatus(role: 'admin' | 'cafe') {
   if (role === 'admin') {
     revalidatePath('/admin', 'layout')
   } else {
     revalidatePath('/')
+    revalidatePath('/profile')
     revalidatePath('/settings/app')
   }
 }

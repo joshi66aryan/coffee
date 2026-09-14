@@ -7,13 +7,15 @@ import { CafeHeader } from '@/components/cafe/cafe-header'
 import { ProfileHeaderCard } from '@/components/cafe/profile-header-card'
 import { ProfileQuickNav } from '@/components/cafe/profile-quick-nav'
 import { PageMasthead } from '@/components/ui/page-masthead'
-import { ContactSupportRow } from '@/components/cafe/contact-support-row'
+import { ListGroup } from '@/components/ui/list-group'
+import { NotificationsRow } from '@/components/cafe/notifications-row'
 import { SignOutRow } from '@/components/cafe/sign-out-row'
 import { RepeatLastOrderCard } from '@/components/cafe/repeat-last-order-card'
 import { OutstandingBillsCard } from '@/components/cafe/outstanding-bills-card'
 import { groupItemsByOrder, type OrderItemPreviewRow } from '@/lib/cafe/order-preview'
 import { summarizeOutstandingBills } from '@/lib/cafe/outstanding-bills'
 import { requireActiveCafe } from '@/lib/cafe/require-cafe'
+import { getPushSubscriptionStatus } from '@/lib/push/status'
 import type { Order } from '@/lib/types'
 import logger from '@/lib/logger'
 
@@ -24,8 +26,9 @@ export default async function ProfilePage() {
   const { user } = await getCachedUser()
   if (!user) redirect('/login')
 
-  const [{ cafe }, lastOrderResult, unpaidOrdersResult] = await Promise.all([
+  const [{ cafe }, { subscribed }, lastOrderResult, unpaidOrdersResult] = await Promise.all([
     requireActiveCafe(),
+    getPushSubscriptionStatus(),
     supabase
       .from('orders')
       .select('*')
@@ -103,9 +106,11 @@ export default async function ProfilePage() {
             </div>
           )}
 
-          <ContactSupportRow />
-
-          <SignOutRow />
+          {/* Account controls share one card — support lives in App Settings. */}
+          <ListGroup>
+            <NotificationsRow initialSubscribed={subscribed} />
+            <SignOutRow />
+          </ListGroup>
         </div>
       </div>
     </main>
