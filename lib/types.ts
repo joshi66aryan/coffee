@@ -1,4 +1,4 @@
-export type CafeStatus = 'pending' | 'active' | 'rejected'
+export type CafeStatus = 'pending' | 'active' | 'rejected' | 'suspended'
 
 export interface Cafe {
   id: string

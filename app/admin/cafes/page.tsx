@@ -14,13 +14,15 @@ export const metadata = { title: 'Cafés — Admin' }
 const STATUS_LABEL: Record<CafeStatus, string> = {
   pending:  'Pending',
   active:   'Active',
-  rejected: 'Rejected',
+  rejected:  'Rejected',
+  suspended: 'Frozen',
 }
 
 const STATUS_CLASS: Record<CafeStatus, string> = {
   pending:  'bg-brand-400 text-brand-950',
   active:   'bg-olive-600 text-cream-100',
-  rejected: 'bg-cream-300 text-brand-900',
+  rejected:  'bg-cream-300 text-brand-900',
+  suspended: 'bg-red-700 text-cream-100',
 }
 
 function CafeRow({ cafe, showActions }: { cafe: Cafe; showActions: boolean }) {

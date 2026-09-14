@@ -166,6 +166,119 @@ export async function rejectCafe(cafeId: string): Promise<{ error?: string }> {
   return {}
 }
 
+/**
+ * Freezing an approved café.
+ *
+ * Distinct from rejection, which means the application was never accepted and
+ * says as much on the café's own screens. A frozen café was approved, is barred
+ * for now, and can be let back in without that reading as a fresh approval.
+ *
+ * Scoped to `status = 'active'` in the update itself rather than checked first,
+ * so a café that is merely pending cannot be moved sideways into a state that
+ * implies it was once approved. No row matching means no change, and the caller
+ * is told rather than being shown a success it did not get.
+ */
+export async function suspendCafe(cafeId: string): Promise<{ error?: string }> {
+  const adminId = await assertAdmin()
+  if (invalidId(cafeId)) return { error: 'Invalid café id.' }
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from('cafes')
+    .update({ status: 'suspended' })
+    .eq('id', cafeId)
+    .eq('status', 'active')
+    .select('id')
+
+  if (error) {
+    logger.error('Failed to freeze café', { cafeId, msg: error.message })
+    return { error: error.message }
+  }
+
+  if (!data || data.length === 0) {
+    return { error: 'Only an active café can be frozen.' }
+  }
+
+  logger.info('Café frozen', { cafeId, adminId })
+  return {}
+}
+
+/**
+ * Lifting a freeze. Scoped to `status = 'suspended'` for the mirror-image
+ * reason: this must not be a back door that approves a pending application or
+ * resurrects a rejected one without anyone deciding to.
+ */
+export async function reactivateCafe(cafeId: string): Promise<{ error?: string }> {
+  const adminId = await assertAdmin()
+  if (invalidId(cafeId)) return { error: 'Invalid café id.' }
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from('cafes')
+    .update({ status: 'active' })
+    .eq('id', cafeId)
+    .eq('status', 'suspended')
+    .select('id')
+
+  if (error) {
+    logger.error('Failed to unfreeze café', { cafeId, msg: error.message })
+    return { error: error.message }
+  }
+
+  if (!data || data.length === 0) {
+    return { error: 'Only a frozen café can be unfrozen.' }
+  }
+
+  logger.info('Café unfrozen', { cafeId, adminId })
+  return {}
+}
+
+/**
+ * Removing a café outright.
+ *
+ * `orders.cafe_id` is `on delete restrict` (002), so the database already
+ * refuses to let a café's history be deleted out from under its orders. That is
+ * the behaviour we want, not an obstacle — but on its own it surfaces as a raw
+ * foreign-key violation with no suggestion of what to do instead. The count is
+ * read first so the refusal can name the number and point at freezing.
+ *
+ * The delete itself targets the auth user, not the café row: `cafes.id`
+ * references `auth.users` on delete cascade (001), and `cafe_product_prices`
+ * and `push_subscriptions` cascade in turn. Deleting the café row alone would
+ * strand a login that could sign in and be sent back to onboarding.
+ */
+export async function deleteCafe(cafeId: string): Promise<{ error?: string }> {
+  const adminId = await assertAdmin()
+  if (invalidId(cafeId)) return { error: 'Invalid café id.' }
+  const admin = createAdminClient()
+
+  const { count, error: countError } = await admin
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('cafe_id', cafeId)
+
+  if (countError) {
+    logger.error('Failed to count café orders before delete', { cafeId, msg: countError.message })
+    return { error: 'Could not delete this café. Please try again.' }
+  }
+
+  if (count && count > 0) {
+    return {
+      error: `This café has ${count} order${count === 1 ? '' : 's'} on record, so deleting it would take the order history with it. Freeze it instead — that blocks access and keeps the records.`,
+    }
+  }
+
+  const { error } = await admin.auth.admin.deleteUser(cafeId)
+
+  if (error) {
+    logger.error('Failed to delete café', { cafeId, msg: error.message })
+    return { error: 'Could not delete this café. Please try again.' }
+  }
+
+  logger.info('Café deleted', { cafeId, adminId })
+  return {}
+}
+
 export async function getCafe(id: string): Promise<Cafe | null> {
   await assertAdmin()
   if (invalidId(id)) return null

@@ -6,6 +6,31 @@ import { SherpaSipsLogo } from '@/components/cafe/sherpa-sips-logo'
 import { MountainRidge } from '@/components/brand/mountain-ridge'
 import { BeanScatter } from '@/components/brand/bean-scatter'
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/cafe/constants'
+import type { CafeStatus } from '@/lib/types'
+
+/**
+ * Everything that is not an active café lands here, so the copy is chosen by
+ * status. It used to say "pending approval" unconditionally, which was already
+ * wrong for a rejected café and would have been actively misleading for a
+ * frozen one.
+ */
+const COPY: Record<Exclude<CafeStatus, 'active'>, { eyebrow: string; title: string; body: string }> = {
+  pending: {
+    eyebrow: 'Base camp',
+    title: 'Application under review',
+    body: "Your café account is pending approval. We'll get back to you within 24 hours — usually sooner during business hours.",
+  },
+  rejected: {
+    eyebrow: 'Base camp',
+    title: 'Application not approved',
+    body: "We weren't able to approve this café account. If you think that's a mistake, get in touch and we'll take another look.",
+  },
+  suspended: {
+    eyebrow: 'On hold',
+    title: 'Account frozen',
+    body: 'Your café account is on hold, so ordering is paused for now. Get in touch and we\'ll sort it out — your order history is safe.',
+  },
+}
 
 export const metadata = { title: 'Account Pending — Sherpa Sips' }
 
@@ -15,6 +40,8 @@ export default async function PendingPage() {
   if (!cafe) redirect('/onboarding')
   if (cafe.status === 'active') redirect('/')
 
+  const copy = COPY[cafe.status]
+
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-brand-900 text-cream-200">
       <ApprovalWatcher />
@@ -23,13 +50,10 @@ export default async function PendingPage() {
       <div className="relative flex flex-1 flex-col items-center justify-center px-5 py-16 text-center">
         <SherpaSipsLogo variant="stacked" tone="mono" tagline className="h-28 text-cream-50" />
 
-        <p className="eyebrow mt-12 text-brand-400">Base camp</p>
-        <h1 className="display-lg mt-4 max-w-md text-cream-50">
-          Application under review
-        </h1>
+        <p className="eyebrow mt-12 text-brand-400">{copy.eyebrow}</p>
+        <h1 className="display-lg mt-4 max-w-md text-cream-50">{copy.title}</h1>
         <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-cream-200/70">
-          Your café account is pending approval. We&apos;ll get back to you within
-          24 hours — usually sooner during business hours.
+          {copy.body}
         </p>
 
         <a

@@ -20,7 +20,10 @@ export async function resolvePostAuthRedirect(
     return { redirect: '/onboarding' }
   }
 
-  if (cafe.status === 'pending' || cafe.status === 'rejected') {
+  // Tested for active rather than listing the ways to be inactive, so a new
+  // status (suspended, in 014) is barred by default instead of silently
+  // falling through to the catalog.
+  if (cafe.status !== 'active') {
     return { redirect: '/pending' }
   }
 

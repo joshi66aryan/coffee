@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getCafe, getCafeCompletedOrderCount, getCafeProductPricing } from '@/lib/admin/actions'
 import { CafeCreditToggle } from '@/components/admin/cafe-credit-toggle'
+import { CafeLifecycleActions } from '@/components/admin/cafe-lifecycle-actions'
 import { CafePricingTable } from '@/components/admin/cafe-pricing-table'
 import { CreditEligibilityBadge } from '@/components/admin/credit-eligibility-badge'
 import { PageMasthead } from '@/components/ui/page-masthead'
@@ -11,13 +12,15 @@ export const metadata = { title: 'Café Details — Admin' }
 const STATUS_LABEL: Record<CafeStatus, string> = {
   pending: 'Pending',
   active: 'Active',
-  rejected: 'Rejected',
+  rejected:  'Rejected',
+  suspended: 'Frozen',
 }
 
 const STATUS_CLASS: Record<CafeStatus, string> = {
   pending: 'bg-brand-400 text-brand-950',
   active: 'bg-olive-600 text-cream-100',
-  rejected: 'bg-cream-300 text-brand-900',
+  rejected:  'bg-cream-300 text-brand-900',
+  suspended: 'bg-red-700 text-cream-100',
 }
 
 interface Props {
@@ -80,6 +83,15 @@ export default async function AdminCafeDetailPage({ params }: Props) {
               <CreditEligibilityBadge completedOrders={completedOrders} />
             </div>
             <CafeCreditToggle cafeId={cafe.id} enabled={cafe.credit_enabled} />
+          </section>
+
+          <section className="rounded-xl border border-cream-300 bg-white p-5">
+            <h2 className="eyebrow mb-1">Account</h2>
+            <p className="mb-4 text-xs leading-relaxed text-gray-400">
+              Freezing blocks sign-in and ordering but keeps the café&apos;s history.
+              Deleting is permanent, and is refused for a café that has ever ordered.
+            </p>
+            <CafeLifecycleActions cafeId={cafe.id} status={cafe.status} cafeName={cafe.name} />
           </section>
 
           <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
