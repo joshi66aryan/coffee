@@ -51,6 +51,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // `next dev` otherwise appends a generated block to CLAUDE.md and re-adds it
+  // on every start, so the file this project maintains by hand never stays
+  // clean. The guidance it injects is generic; the standards that actually
+  // govern this repo are already written there deliberately.
+  agentRules: false,
   images: {
     remotePatterns: [
       {
