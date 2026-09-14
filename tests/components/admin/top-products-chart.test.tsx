@@ -33,4 +33,25 @@ describe('TopProductsChart', () => {
     fireEvent.pointerLeave(row)
     expect(screen.queryByText('Rs. 6,000')).not.toBeInTheDocument()
   })
+
+  // The card shares a grid row with "Orders by Status", so its height is
+  // capped — but the cap is presentation only. Every product stays rendered
+  // and reachable by scrolling; none is dropped from the list.
+  it('keeps every product behind a scrollable region rather than truncating the list', () => {
+    const many: TopProduct[] = Array.from({ length: 8 }, (_, i) => ({
+      product_id: `p${i}`,
+      name: `Product ${i}`,
+      quantitySold: 20 - i,
+      revenue: 1000 + i,
+    }))
+
+    render(<TopProductsChart products={many} />)
+
+    for (const product of many) {
+      expect(screen.getByText(product.name)).toBeInTheDocument()
+    }
+
+    const region = screen.getByRole('region', { name: 'Top selling products' })
+    expect(region).toHaveClass('overflow-y-auto')
+  })
 })

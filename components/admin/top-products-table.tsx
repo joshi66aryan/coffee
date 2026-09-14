@@ -10,7 +10,9 @@ export function TopProductsTable({ products }: { products: TopProduct[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    // Capped for the same reason as the chart above it: this card must not set
+    // the height of the grid row it shares with "Orders by Status".
+    <div className="max-h-72 overflow-auto">
       <table className="table-brand min-w-125">
         <thead>
           <tr>
