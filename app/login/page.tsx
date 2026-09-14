@@ -23,7 +23,9 @@ export default async function LoginPage({
       ? 'Google sign-in failed — please try again.'
       : error === 'link'
         ? 'That link has expired or has already been used. Request a new one below.'
-        : undefined
+        : error === 'account-removed'
+          ? 'That account no longer exists. Please sign up or use a different account.'
+          : undefined
 
   return (
     <main className="flex min-h-screen flex-col lg:flex-row">

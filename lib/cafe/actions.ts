@@ -257,6 +257,21 @@ export async function createCafeProfile(
   })
 
   if (error) {
+    // 23503 is a foreign-key violation, and `cafes.id` has exactly one: it
+    // references auth.users. So the request carried a valid, unexpired token
+    // for an account that no longer exists — an admin deleted the café while
+    // its browser was still signed in. getClaims() verifies the token locally
+    // (lib/supabase/user.ts) and never asks whether the user is still there,
+    // which is what makes this reachable for up to an hour after the deletion.
+    //
+    // Ending the session is the only useful answer: retrying cannot succeed,
+    // and "please try again" invites exactly that.
+    if (error.code === '23503') {
+      logger.warn('Onboarding attempted with a deleted account', { userId: user.id })
+      await supabase.auth.signOut()
+      return { redirect: '/login?error=account-removed' }
+    }
+
     logger.error('Failed to create café profile', { userId: user.id, msg: error.message })
     return { error: 'Failed to save your profile. Please try again.' }
   }
