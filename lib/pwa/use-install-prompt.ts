@@ -1,11 +1,16 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
-import { getCanInstall, subscribe, promptInstall } from '@/lib/pwa/install-prompt-store'
+import {
+  getCanInstall,
+  getNeedsManualInstall,
+  subscribe,
+  promptInstall,
+} from '@/lib/pwa/install-prompt-store'
 
 // Safari/iOS never fires 'beforeinstallprompt' at all (no native prompt API
 // there — install is manual, via the share sheet), so canInstall simply
-// stays false on those browsers.
+// stays false on those browsers and `needsManualInstall` covers them instead.
 //
 // `useSyncExternalStore` rather than useState(getCanInstall) + useEffect, and
 // the third argument is the whole reason. The store attaches its listener at
@@ -20,6 +25,10 @@ import { getCanInstall, subscribe, promptInstall } from '@/lib/pwa/install-promp
 // afterwards with the real value, which is when the banner appears.
 export function useInstallPrompt() {
   const canInstall = useSyncExternalStore(subscribe, getCanInstall, () => false)
+  // True on iPhone/iPad, where there is no prompt to defer and the install has
+  // to be described rather than offered. Read through the same store so it is
+  // likewise absent from the server render and the hydration pass.
+  const needsManualInstall = useSyncExternalStore(subscribe, getNeedsManualInstall, () => false)
 
-  return { canInstall, promptInstall }
+  return { canInstall, needsManualInstall, promptInstall }
 }
