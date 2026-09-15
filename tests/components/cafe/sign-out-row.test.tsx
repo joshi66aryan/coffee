@@ -9,10 +9,22 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({ auth: { signOut: mockSignOut } }),
 }))
 
+const mockUnsubscribeBrowser = vi.fn()
+vi.mock('@/lib/push/client', () => ({
+  unsubscribeBrowserFromPush: () => mockUnsubscribeBrowser(),
+}))
+
+const mockUnsubscribeFromPush = vi.fn()
+vi.mock('@/lib/push/actions', () => ({
+  unsubscribeFromPush: (...args: unknown[]) => mockUnsubscribeFromPush(...args),
+}))
+
 const originalLocation = window.location
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockUnsubscribeBrowser.mockResolvedValue(null)
+  mockUnsubscribeFromPush.mockResolvedValue({})
   localStorage.clear()
   mockSignOut.mockResolvedValue({})
   Object.defineProperty(window, 'location', {
@@ -45,6 +57,17 @@ describe('SignOutRow', () => {
       expect(mockSignOut).toHaveBeenCalledOnce()
       expect(window.location.href).toBe('/login')
     })
+  })
+
+  // Otherwise this device keeps announcing order updates for an account that
+  // is no longer signed in on it.
+  it('stops this browser receiving notifications', async () => {
+    mockUnsubscribeBrowser.mockResolvedValue('https://push.example/endpoint-2')
+
+    render(<SignOutRow />)
+    await userEvent.click(screen.getByRole('button', { name: /sign out/i }))
+
+    await waitFor(() => expect(mockUnsubscribeFromPush).toHaveBeenCalledWith('https://push.example/endpoint-2'))
   })
 
   // Otherwise the next café to sign in on this device inherits the cart.
