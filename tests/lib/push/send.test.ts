@@ -29,7 +29,15 @@ vi.mock('@/lib/logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { sendPushToAdmins, sendPushToCafe } from '@/lib/push/send'
+const { headerStore } = vi.hoisted(() => ({ headerStore: new Map<string, string>() }))
+
+vi.mock('next/headers', () => ({
+  headers: async () => ({
+    get: (name: string) => headerStore.get(name.toLowerCase()) ?? null,
+  }),
+}))
+
+import { sendPushToAdmins, sendPushToCafe, pushUrl } from '@/lib/push/send'
 
 function selectBuilder(result: { data: unknown; error: unknown }) {
   const builder = {
@@ -179,5 +187,41 @@ describe('sendPushToCafe', () => {
     expect(builder.eq).toHaveBeenCalledWith('user_id', 'cafe-1')
     expect(builder.eq).toHaveBeenCalledWith('role', 'cafe')
     expect(sendNotification).toHaveBeenCalledOnce()
+  })
+})
+
+// The service worker resolves a *relative* url against its own origin, so a
+// relative link let whichever browser displayed the notification decide where
+// it landed. With one Supabase project behind both local dev and production,
+// that opened a real production order on http://localhost:3000 for anyone who
+// had ever enabled notifications while developing.
+describe('pushUrl', () => {
+  const ORIGINAL_SITE_URL = process.env.SITE_URL
+
+  beforeEach(() => {
+    headerStore.clear()
+    delete process.env.SITE_URL
+  })
+
+  afterEach(() => {
+    if (ORIGINAL_SITE_URL === undefined) delete process.env.SITE_URL
+    else process.env.SITE_URL = ORIGINAL_SITE_URL
+  })
+
+  it('points the notification at the deployment that raised it', async () => {
+    process.env.SITE_URL = 'https://www.orderfromsherpasips.com'
+    expect(await pushUrl('/admin/orders/order-1')).toBe(
+      'https://www.orderfromsherpasips.com/admin/orders/order-1',
+    )
+  })
+
+  it('falls back to the requesting host when no origin is configured', async () => {
+    headerStore.set('host', 'localhost:3000')
+    expect(await pushUrl('/orders/order-1')).toBe('http://localhost:3000/orders/order-1')
+  })
+
+  it('leaves no double slash where the configured origin has a trailing one', async () => {
+    process.env.SITE_URL = 'https://www.orderfromsherpasips.com/'
+    expect(await pushUrl('/admin')).toBe('https://www.orderfromsherpasips.com/admin')
   })
 })

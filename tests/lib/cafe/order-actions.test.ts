@@ -8,9 +8,22 @@ vi.mock('react', async importOriginal => {
 const mockGetCachedUser = vi.fn()
 vi.mock('@/lib/supabase/user', () => ({ getCachedUser: () => mockGetCachedUser() }))
 vi.mock('@/lib/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }))
-vi.mock('next/server', () => ({ after: vi.fn() }))
+// Work deferred with after() is collected rather than dropped, so a test can
+// run it and see what the café's order actually sends to the admins.
+const { afterCallbacks, mockSendPushToAdmins } = vi.hoisted(() => ({
+  afterCallbacks: [] as Array<() => unknown>,
+  mockSendPushToAdmins: vi.fn(),
+}))
+vi.mock('next/server', () => ({
+  after: (callback: () => unknown) => {
+    afterCallbacks.push(callback)
+  },
+}))
 vi.mock('@/lib/invoice/generate', () => ({ generateInvoiceForOrder: vi.fn() }))
-vi.mock('@/lib/push/send', () => ({ sendPushToAdmins: vi.fn() }))
+vi.mock('@/lib/push/send', () => ({
+  sendPushToAdmins: mockSendPushToAdmins,
+  pushUrl: async (path: string) => `https://sherpasips.test${path}`,
+}))
 
 const mockConsumeRateLimit = vi.fn()
 vi.mock('@/lib/rate-limit', () => ({
@@ -88,6 +101,7 @@ const { placeOrder, getInvoiceDownloadUrl } = await import('@/lib/cafe/order-act
 
 beforeEach(() => {
   vi.clearAllMocks()
+  afterCallbacks.length = 0
   recorded = { inserts: [], rpcs: [], filters: [] }
   mockConsumeRateLimit.mockResolvedValue({ allowed: true, retryAfter: 0 })
   mockGetCachedUser.mockResolvedValue({
@@ -186,6 +200,52 @@ describe('placeOrder — pricing is never taken from the client', () => {
     // function hard-codes 'pending' — so the client's value has nowhere to go.
     expect(Object.keys(orderRpc() ?? {})).not.toContain('payment_status')
     expect(JSON.stringify(orderRpc())).not.toContain('paid')
+  })
+})
+
+describe('placeOrder — the admin notification', () => {
+  async function runDeferredWork() {
+    for (const callback of afterCallbacks) await callback()
+  }
+
+  // The service worker resolves a relative url against its own origin, which
+  // handed the decision to whichever browser displayed the notification. One
+  // Supabase project sits behind both local dev and production, so a real
+  // production order opened http://localhost:3000 on any machine that had ever
+  // enabled notifications while developing.
+  it('links to the deployment the order was placed on', async () => {
+    await placeOrder({ items: [{ product_id: PRODUCT_ID, quantity: 1 }], payment_type: 'cash' })
+    await runDeferredWork()
+
+    expect(mockSendPushToAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({ url: `https://sherpasips.test/admin/orders/${ORDER_ID}` }),
+    )
+  })
+
+  it('names the café and the order total', async () => {
+    await placeOrder({ items: [{ product_id: PRODUCT_ID, quantity: 2 }], payment_type: 'cash' })
+    await runDeferredWork()
+
+    expect(mockSendPushToAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'New order received',
+        body: expect.stringContaining('Base Camp Coffee'),
+      }),
+    )
+  })
+
+  // The push is deferred precisely so it cannot stall the click, and a failing
+  // push service must not turn a placed order into an error either.
+  it('still returns the order when notifying the admins fails', async () => {
+    mockSendPushToAdmins.mockRejectedValueOnce(new Error('push service unreachable'))
+
+    const result = await placeOrder({
+      items: [{ product_id: PRODUCT_ID, quantity: 1 }],
+      payment_type: 'cash',
+    })
+    await runDeferredWork()
+
+    expect(result).toEqual({ orderId: ORDER_ID })
   })
 })
 

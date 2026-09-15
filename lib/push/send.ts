@@ -1,5 +1,6 @@
 import webpush, { WebPushError } from 'web-push'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSiteOrigin } from '@/lib/site-url'
 import logger from '@/lib/logger'
 
 let vapidConfigured: boolean | null = null
@@ -41,6 +42,26 @@ export interface PushPayload {
   title: string
   body: string
   url?: string
+}
+
+/**
+ * The absolute URL a notification should open, for a path on this deployment.
+ *
+ * A relative url in the payload is resolved by the service worker against its
+ * own origin (public/sw.js), which makes the browser that happens to *show* the
+ * notification decide where it lands — not the deployment the order was placed
+ * on. With one Supabase project behind both local dev and production, that put
+ * a real production order on http://localhost:3000 for anyone who had ever
+ * enabled notifications while developing. An absolute url settles it at the
+ * source: the notification opens the environment that raised it, wherever it is
+ * displayed.
+ *
+ * Call this while handling the request, not inside `after()` — getSiteOrigin
+ * reads request headers when SITE_URL is unset, and resolving it up front keeps
+ * that off whatever request context a deferred callback does or doesn't retain.
+ */
+export async function pushUrl(path: string): Promise<string> {
+  return `${await getSiteOrigin()}${path}`
 }
 
 interface SubscriptionRow {

@@ -112,6 +112,10 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
+  // The server sends an absolute url (lib/push/send.ts), so a notification
+  // opens the deployment that raised it rather than whichever origin this
+  // worker happens to be installed on. Still resolved against that origin, for
+  // the bare '/' default and for anything queued before that changed.
   const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/'
   const target = new URL(url, self.location.origin).href
 

@@ -54,7 +54,11 @@ vi.mock('@/lib/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error:
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }))
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
 vi.mock('next/server', () => ({ after: vi.fn() }))
-vi.mock('@/lib/push/send', () => ({ sendPushToCafe: vi.fn(), sendPushToAdmins: vi.fn() }))
+vi.mock('@/lib/push/send', () => ({
+  sendPushToCafe: vi.fn(),
+  sendPushToAdmins: vi.fn(),
+  pushUrl: async (path: string) => `https://sherpasips.test${path}`,
+}))
 
 const actions = await import('@/lib/admin/actions')
 
