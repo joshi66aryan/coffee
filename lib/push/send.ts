@@ -1,6 +1,5 @@
 import webpush, { WebPushError } from 'web-push'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSiteOrigin } from '@/lib/site-url'
 import logger from '@/lib/logger'
 
 let vapidConfigured: boolean | null = null
@@ -41,27 +40,14 @@ function configureVapid(): boolean {
 export interface PushPayload {
   title: string
   body: string
-  url?: string
-}
-
-/**
- * The absolute URL a notification should open, for a path on this deployment.
- *
- * A relative url in the payload is resolved by the service worker against its
- * own origin (public/sw.js), which makes the browser that happens to *show* the
- * notification decide where it lands — not the deployment the order was placed
- * on. With one Supabase project behind both local dev and production, that put
- * a real production order on http://localhost:3000 for anyone who had ever
- * enabled notifications while developing. An absolute url settles it at the
- * source: the notification opens the environment that raised it, wherever it is
- * displayed.
- *
- * Call this while handling the request, not inside `after()` — getSiteOrigin
- * reads request headers when SITE_URL is unset, and resolving it up front keeps
- * that off whatever request context a deferred callback does or doesn't retain.
- */
-export async function pushUrl(path: string): Promise<string> {
-  return `${await getSiteOrigin()}${path}`
+  /**
+   * Path on the sending deployment that the notification should open. Made
+   * absolute against that deployment's own origin before it goes on the wire:
+   * the service worker resolves a relative url against *its* origin, which
+   * handed the decision to whichever browser displayed the notification rather
+   * than the one the order was placed on.
+   */
+  path?: string
 }
 
 interface SubscriptionRow {
@@ -69,27 +55,87 @@ interface SubscriptionRow {
   endpoint: string
   p256dh: string
   auth_key: string
+  origin: string | null
+}
+
+// A browser reaching one of these is talking to a server on the machine it is
+// running on. Matches the service worker's own local-dev check (public/sw.js).
+const LOCAL_HOSTNAMES = ['localhost', '127.0.0.1', '[::1]']
+
+export function isLocalOrigin(origin: string | null): boolean {
+  if (!origin) return false
+  try {
+    return LOCAL_HOSTNAMES.includes(new URL(origin).hostname)
+  } catch {
+    // Not a url at all — nothing that came from getSiteOrigin. Whatever it is,
+    // it is not this machine.
+    return false
+  }
+}
+
+/**
+ * Whether a stored subscription belongs to the deployment doing the sending.
+ *
+ * One Supabase project sits behind both local development and production, so
+ * this table is shared: without this, a laptop running `npm run dev` notified
+ * real cafés' phones about test orders placed in their name, and a real order
+ * rang a developer's localhost tab.
+ *
+ * The two directions are deliberately not symmetrical. A dev server speaks only
+ * to browsers on its own machine — it has no business reaching a phone, and an
+ * unknown origin is not worth the risk. Production keeps notifying rows whose
+ * origin is unknown (everything created before migration 015), because
+ * silently dropping a café's notifications is far worse than a developer
+ * seeing one extra: those rows are almost all real devices, and they stamp
+ * themselves the next time the browser re-subscribes.
+ */
+export function belongsToDeployment(
+  subscriptionOrigin: string | null,
+  deploymentOrigin: string,
+): boolean {
+  if (isLocalOrigin(deploymentOrigin)) return isLocalOrigin(subscriptionOrigin)
+  return !isLocalOrigin(subscriptionOrigin)
 }
 
 async function sendToSubscriptions(
   rows: SubscriptionRow[],
   payload: PushPayload,
+  origin: string,
   context: Record<string, unknown> = {},
 ): Promise<void> {
-  if (rows.length === 0) {
-    logger.warn('No push subscriptions to notify', { title: payload.title, ...context })
+  // Filtered here rather than in the query: the rule is one readable predicate
+  // over a handful of rows (the admins, or one café's devices), and expressing
+  // it as a PostgREST `or` string would scatter it across both call sites.
+  const targets = rows.filter(row => belongsToDeployment(row.origin, origin))
+
+  const elsewhere = rows.length - targets.length
+  if (elsewhere > 0) {
+    logger.info('Push subscriptions skipped — they belong to another deployment', {
+      skipped: elsewhere,
+      origin,
+      ...context,
+    })
+  }
+
+  if (targets.length === 0) {
+    logger.warn('No push subscriptions to notify', { title: payload.title, origin, ...context })
     return
   }
   if (!configureVapid()) return
 
   const admin = createAdminClient()
+  const wire = JSON.stringify({
+    title: payload.title,
+    body: payload.body,
+    url: `${origin}${payload.path ?? '/'}`,
+  })
 
   await Promise.all(
-    rows.map(async row => {
+    targets.map(async row => {
       try {
         const result = await webpush.sendNotification(
           { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth_key } },
-          JSON.stringify(payload),
+          wire,
           { timeout: 5000 },
         )
         logger.info('Push sent', { endpoint: row.endpoint, statusCode: result.statusCode, title: payload.title, ...context })
@@ -110,11 +156,18 @@ async function sendToSubscriptions(
   )
 }
 
-export async function sendPushToAdmins(payload: PushPayload): Promise<void> {
+/**
+ * `origin` is this deployment's own origin, from getSiteOrigin. Passed in
+ * rather than read here because both call sites defer the send with `after()`,
+ * and getSiteOrigin reads request headers when SITE_URL is unset — resolving it
+ * while the request is still being handled keeps that off whatever request
+ * context a deferred callback does or does not retain.
+ */
+export async function sendPushToAdmins(payload: PushPayload, origin: string): Promise<void> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth_key')
+    .select('id, endpoint, p256dh, auth_key, origin')
     .eq('role', 'admin')
     .returns<SubscriptionRow[]>()
 
@@ -123,14 +176,19 @@ export async function sendPushToAdmins(payload: PushPayload): Promise<void> {
     return
   }
 
-  await sendToSubscriptions(data ?? [], payload, { scope: 'admins' })
+  await sendToSubscriptions(data ?? [], payload, origin, { scope: 'admins' })
 }
 
-export async function sendPushToCafe(cafeId: string, payload: PushPayload): Promise<void> {
+/** See sendPushToAdmins for `origin`. */
+export async function sendPushToCafe(
+  cafeId: string,
+  payload: PushPayload,
+  origin: string,
+): Promise<void> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth_key')
+    .select('id, endpoint, p256dh, auth_key, origin')
     .eq('user_id', cafeId)
     .eq('role', 'cafe')
     .returns<SubscriptionRow[]>()
@@ -140,5 +198,5 @@ export async function sendPushToCafe(cafeId: string, payload: PushPayload): Prom
     return
   }
 
-  await sendToSubscriptions(data ?? [], payload, { cafeId })
+  await sendToSubscriptions(data ?? [], payload, origin, { cafeId })
 }

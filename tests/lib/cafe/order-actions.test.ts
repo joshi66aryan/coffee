@@ -20,10 +20,8 @@ vi.mock('next/server', () => ({
   },
 }))
 vi.mock('@/lib/invoice/generate', () => ({ generateInvoiceForOrder: vi.fn() }))
-vi.mock('@/lib/push/send', () => ({
-  sendPushToAdmins: mockSendPushToAdmins,
-  pushUrl: async (path: string) => `https://sherpasips.test${path}`,
-}))
+vi.mock('@/lib/push/send', () => ({ sendPushToAdmins: mockSendPushToAdmins }))
+vi.mock('@/lib/site-url', () => ({ getSiteOrigin: async () => 'https://sherpasips.test' }))
 
 const mockConsumeRateLimit = vi.fn()
 vi.mock('@/lib/rate-limit', () => ({
@@ -218,7 +216,8 @@ describe('placeOrder — the admin notification', () => {
     await runDeferredWork()
 
     expect(mockSendPushToAdmins).toHaveBeenCalledWith(
-      expect.objectContaining({ url: `https://sherpasips.test/admin/orders/${ORDER_ID}` }),
+      expect.objectContaining({ path: `/admin/orders/${ORDER_ID}` }),
+      'https://sherpasips.test',
     )
   })
 
@@ -231,6 +230,7 @@ describe('placeOrder — the admin notification', () => {
         title: 'New order received',
         body: expect.stringContaining('Base Camp Coffee'),
       }),
+      expect.any(String),
     )
   })
 

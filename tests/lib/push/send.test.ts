@@ -29,15 +29,12 @@ vi.mock('@/lib/logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-const { headerStore } = vi.hoisted(() => ({ headerStore: new Map<string, string>() }))
-
-vi.mock('next/headers', () => ({
-  headers: async () => ({
-    get: (name: string) => headerStore.get(name.toLowerCase()) ?? null,
-  }),
-}))
-
-import { sendPushToAdmins, sendPushToCafe, pushUrl } from '@/lib/push/send'
+import {
+  sendPushToAdmins,
+  sendPushToCafe,
+  isLocalOrigin,
+  belongsToDeployment,
+} from '@/lib/push/send'
 
 function selectBuilder(result: { data: unknown; error: unknown }) {
   const builder = {
@@ -57,7 +54,16 @@ function deleteBuilder() {
   return builder
 }
 
-const subscription = { id: 'sub-1', endpoint: 'https://push.example/1', p256dh: 'p1', auth_key: 'a1' }
+const PROD = 'https://www.example.com'
+const LOCAL = 'http://localhost:3000'
+
+const subscription = {
+  id: 'sub-1',
+  endpoint: 'https://push.example/1',
+  p256dh: 'p1',
+  auth_key: 'a1',
+  origin: PROD,
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -75,11 +81,15 @@ describe('sendPushToAdmins', () => {
     mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
     sendNotification.mockResolvedValue({ statusCode: 201, body: '', headers: {} })
 
-    await sendPushToAdmins({ title: 'New order received', body: 'Body', url: '/admin/orders/1' })
+    await sendPushToAdmins({ title: 'New order received', body: 'Body', path: '/admin/orders/1' }, PROD)
 
     expect(sendNotification).toHaveBeenCalledWith(
       { endpoint: subscription.endpoint, keys: { p256dh: 'p1', auth: 'a1' } },
-      JSON.stringify({ title: 'New order received', body: 'Body', url: '/admin/orders/1' }),
+      JSON.stringify({
+        title: 'New order received',
+        body: 'Body',
+        url: 'https://www.example.com/admin/orders/1',
+      }),
       expect.objectContaining({ timeout: expect.any(Number) }),
     )
   })
@@ -87,7 +97,7 @@ describe('sendPushToAdmins', () => {
   it('does nothing when there are no admin subscriptions', async () => {
     mockFrom.mockReturnValueOnce(selectBuilder({ data: [], error: null }))
 
-    await sendPushToAdmins({ title: 't', body: 'b' })
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
 
     expect(sendNotification).not.toHaveBeenCalled()
   })
@@ -95,7 +105,7 @@ describe('sendPushToAdmins', () => {
   it('does nothing when loading subscriptions fails', async () => {
     mockFrom.mockReturnValueOnce(selectBuilder({ data: null, error: { message: 'db down' } }))
 
-    await sendPushToAdmins({ title: 't', body: 'b' })
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
 
     expect(sendNotification).not.toHaveBeenCalled()
   })
@@ -106,7 +116,7 @@ describe('sendPushToAdmins', () => {
     const del = deleteBuilder()
     mockFrom.mockReturnValueOnce(del)
 
-    await sendPushToAdmins({ title: 't', body: 'b' })
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
 
     expect(del.delete).toHaveBeenCalled()
     expect(del.eq).toHaveBeenCalledWith('id', subscription.id)
@@ -116,7 +126,7 @@ describe('sendPushToAdmins', () => {
     mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
     sendNotification.mockRejectedValue(new Error('network down'))
 
-    await sendPushToAdmins({ title: 't', body: 'b' })
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
 
     // Only the initial select call — no follow-up delete call.
     expect(mockFrom).toHaveBeenCalledTimes(1)
@@ -144,7 +154,7 @@ describe('VAPID configuration', () => {
     const { sendPushToAdmins } = await freshModule()
     mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
 
-    await sendPushToAdmins({ title: 't', body: 'b' })
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
 
     expect(sendNotification).not.toHaveBeenCalled()
   })
@@ -155,8 +165,8 @@ describe('VAPID configuration', () => {
     mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
     mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
 
-    await sendPushToAdmins({ title: 't', body: 'b' })
-    await sendPushToAdmins({ title: 't', body: 'b' })
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
 
     expect(setVapidDetails).toHaveBeenCalledOnce()
     expect(setVapidDetails).toHaveBeenCalledWith('mailto:ops@example.com', 'public-key', 'private-key')
@@ -170,7 +180,7 @@ describe('VAPID configuration', () => {
     const { sendPushToAdmins } = await freshModule()
     mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
 
-    await sendPushToAdmins({ title: 't', body: 'b' })
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
 
     expect(sendNotification).not.toHaveBeenCalled()
   })
@@ -182,7 +192,7 @@ describe('sendPushToCafe', () => {
     mockFrom.mockReturnValueOnce(builder)
     sendNotification.mockResolvedValue({ statusCode: 201, body: '', headers: {} })
 
-    await sendPushToCafe('cafe-1', { title: 'Order status updated', body: 'Body', url: '/orders/1' })
+    await sendPushToCafe('cafe-1', { title: 'Order status updated', body: 'Body', path: '/orders/1' }, PROD)
 
     expect(builder.eq).toHaveBeenCalledWith('user_id', 'cafe-1')
     expect(builder.eq).toHaveBeenCalledWith('role', 'cafe')
@@ -190,38 +200,112 @@ describe('sendPushToCafe', () => {
   })
 })
 
-// The service worker resolves a *relative* url against its own origin, so a
-// relative link let whichever browser displayed the notification decide where
-// it landed. With one Supabase project behind both local dev and production,
-// that opened a real production order on http://localhost:3000 for anyone who
-// had ever enabled notifications while developing.
-describe('pushUrl', () => {
-  const ORIGINAL_SITE_URL = process.env.SITE_URL
+// ── Which deployment a notification belongs to ───────────────────────────────
+//
+// One Supabase project sits behind both local development and production, so
+// this table is shared. Every send used to fan out to every row for the role: a
+// laptop running `npm run dev` notified real cafés' phones about test orders
+// placed in their name, and a real order rang a developer's localhost tab —
+// two notifications for one order, which is how it surfaced.
 
-  beforeEach(() => {
-    headerStore.clear()
-    delete process.env.SITE_URL
+describe('isLocalOrigin', () => {
+  it.each([
+    ['http://localhost:3000', true],
+    ['http://127.0.0.1:3000', true],
+    ['http://[::1]:3000', true],
+    ['https://www.example.com', false],
+    // A deployed host that merely mentions localhost is not this machine.
+    ['https://localhost.example.com', false],
+    [null, false],
+    ['not a url', false],
+  ])('%s → %s', (origin, expected) => {
+    expect(isLocalOrigin(origin)).toBe(expected)
+  })
+})
+
+describe('belongsToDeployment', () => {
+  it('keeps a dev server to the browsers on its own machine', () => {
+    expect(belongsToDeployment(LOCAL, LOCAL)).toBe(true)
+    expect(belongsToDeployment(PROD, LOCAL)).toBe(false)
   })
 
-  afterEach(() => {
-    if (ORIGINAL_SITE_URL === undefined) delete process.env.SITE_URL
-    else process.env.SITE_URL = ORIGINAL_SITE_URL
+  // Unknown means "created before migration 015". A dev server will not take
+  // the chance that it is a café's phone.
+  it('treats an unknown origin as somebody else when sending from a dev server', () => {
+    expect(belongsToDeployment(null, LOCAL)).toBe(false)
   })
 
-  it('points the notification at the deployment that raised it', async () => {
-    process.env.SITE_URL = 'https://www.orderfromsherpasips.com'
-    expect(await pushUrl('/admin/orders/order-1')).toBe(
-      'https://www.orderfromsherpasips.com/admin/orders/order-1',
+  // The other direction is deliberately not symmetrical: silently dropping a
+  // café's notifications, with the toggle still reading ON, is far worse than a
+  // developer seeing one extra.
+  it('keeps notifying rows of unknown origin from production', () => {
+    expect(belongsToDeployment(null, PROD)).toBe(true)
+    expect(belongsToDeployment(PROD, PROD)).toBe(true)
+  })
+
+  it('never rings a localhost tab from production', () => {
+    expect(belongsToDeployment(LOCAL, PROD)).toBe(false)
+  })
+})
+
+describe('sending across deployments', () => {
+  const localSubscription = { ...subscription, id: 'sub-local', origin: LOCAL }
+
+  it('does not notify a café’s real device from a dev server', async () => {
+    mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
+
+    await sendPushToCafe('cafe-1', { title: 't', body: 'b' }, LOCAL)
+
+    expect(sendNotification).not.toHaveBeenCalled()
+  })
+
+  it('does not ring a localhost tab from production', async () => {
+    mockFrom.mockReturnValueOnce(selectBuilder({ data: [localSubscription], error: null }))
+
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
+
+    expect(sendNotification).not.toHaveBeenCalled()
+  })
+
+  it('notifies only the matching subscription when both exist', async () => {
+    mockFrom.mockReturnValueOnce(
+      selectBuilder({ data: [subscription, localSubscription], error: null }),
+    )
+    sendNotification.mockResolvedValue({ statusCode: 201, body: '', headers: {} })
+
+    await sendPushToAdmins({ title: 't', body: 'b', path: '/admin' }, PROD)
+
+    expect(sendNotification).toHaveBeenCalledOnce()
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: subscription.endpoint }),
+      expect.stringContaining('https://www.example.com/admin'),
+      expect.anything(),
     )
   })
 
-  it('falls back to the requesting host when no origin is configured', async () => {
-    headerStore.set('host', 'localhost:3000')
-    expect(await pushUrl('/orders/order-1')).toBe('http://localhost:3000/orders/order-1')
+  it('opens the deployment that sent it, wherever the notification is shown', async () => {
+    mockFrom.mockReturnValueOnce(selectBuilder({ data: [localSubscription], error: null }))
+    sendNotification.mockResolvedValue({ statusCode: 201, body: '', headers: {} })
+
+    await sendPushToAdmins({ title: 't', body: 'b', path: '/admin/orders/1' }, LOCAL)
+
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      JSON.stringify({ title: 't', body: 'b', url: 'http://localhost:3000/admin/orders/1' }),
+      expect.anything(),
+    )
   })
 
-  it('leaves no double slash where the configured origin has a trailing one', async () => {
-    process.env.SITE_URL = 'https://www.orderfromsherpasips.com/'
-    expect(await pushUrl('/admin')).toBe('https://www.orderfromsherpasips.com/admin')
+  it('falls back to the deployment root when no path is given', async () => {
+    mockFrom.mockReturnValueOnce(selectBuilder({ data: [subscription], error: null }))
+    sendNotification.mockResolvedValue({ statusCode: 201, body: '', headers: {} })
+
+    await sendPushToAdmins({ title: 't', body: 'b' }, PROD)
+
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('"url":"https://www.example.com/"'),
+      expect.anything(),
+    )
   })
 })

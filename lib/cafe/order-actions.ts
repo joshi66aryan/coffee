@@ -9,7 +9,8 @@ import logger from '@/lib/logger'
 import { consumeRateLimit, retryAfterMessage } from '@/lib/rate-limit'
 import { generateInvoiceForOrder } from '@/lib/invoice/generate'
 import { INVOICE_SIGNED_URL_TTL_SECONDS } from '@/lib/invoice/storage'
-import { sendPushToAdmins, pushUrl } from '@/lib/push/send'
+import { sendPushToAdmins } from '@/lib/push/send'
+import { getSiteOrigin } from '@/lib/site-url'
 import type { Product, CafeProductPrice, PaymentType, InvoiceDownload } from '@/lib/types'
 
 // Upper bounds on what one order may contain. The schema previously bounded
@@ -178,18 +179,21 @@ export async function placeOrder(input: {
     }
   })
 
-  // Resolved here rather than inside the callback below: see pushUrl.
-  const orderUrl = await pushUrl(`/admin/orders/${order.id}`)
+  // Resolved here rather than inside the callback below: see sendPushToAdmins.
+  const origin = await getSiteOrigin()
 
   // Notifying admins runs after the response is sent — a slow or hanging
   // push service must never stall the "place order" click itself.
   after(async () => {
     try {
-      await sendPushToAdmins({
-        title: 'New order received',
-        body: `${cafe.name} placed an order — Rs. ${total_amount.toLocaleString('en-IN')}`,
-        url: orderUrl,
-      })
+      await sendPushToAdmins(
+        {
+          title: 'New order received',
+          body: `${cafe.name} placed an order — Rs. ${total_amount.toLocaleString('en-IN')}`,
+          path: `/admin/orders/${order.id}`,
+        },
+        origin,
+      )
     } catch (err) {
       logger.error('Failed to notify admins of new order', {
         orderId: order.id,

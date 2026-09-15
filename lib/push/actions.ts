@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getSiteOrigin } from '@/lib/site-url'
 import { getCachedUser } from '@/lib/supabase/user'
 import logger from '@/lib/logger'
 
@@ -43,6 +44,12 @@ export async function subscribeToPush(subscription: unknown): Promise<{ error?: 
   // policy on the table.
   const role = user.app_metadata?.role === 'admin' ? 'admin' : 'cafe'
 
+  // Which deployment this browser subscribed on. One Supabase project sits
+  // behind both local development and production, so without this a laptop
+  // running `npm run dev` notified real cafés about test orders — see
+  // migration 015 and belongsToDeployment in lib/push/send.ts.
+  const origin = await getSiteOrigin()
+
   const supabase = await createClient()
   const { error } = await supabase.from('push_subscriptions').upsert(
     {
@@ -50,6 +57,7 @@ export async function subscribeToPush(subscription: unknown): Promise<{ error?: 
       endpoint: parsed.data.endpoint,
       p256dh: parsed.data.keys.p256dh,
       auth_key: parsed.data.keys.auth,
+      origin,
     },
     { onConflict: 'endpoint' },
   )
@@ -59,7 +67,7 @@ export async function subscribeToPush(subscription: unknown): Promise<{ error?: 
     return { error: 'Failed to enable notifications' }
   }
 
-  logger.info('Push subscription saved', { userId: user.id, role })
+  logger.info('Push subscription saved', { userId: user.id, role, origin })
   revalidatePushStatus(role)
   return {}
 }

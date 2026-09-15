@@ -10,7 +10,8 @@ import { PRODUCTS_CACHE_TAG } from '@/lib/cafe/catalog-cache'
 import { getCachedUser } from '@/lib/supabase/user'
 import logger from '@/lib/logger'
 import { INVOICE_SIGNED_URL_TTL_SECONDS, invoicePdfPath } from '@/lib/invoice/storage'
-import { sendPushToCafe, pushUrl } from '@/lib/push/send'
+import { sendPushToCafe } from '@/lib/push/send'
+import { getSiteOrigin } from '@/lib/site-url'
 import { ORDER_STATUS_LABELS } from '@/lib/cafe/order-status'
 import type {
   AdminOrder,
@@ -619,19 +620,23 @@ export async function updateOrderStatus(
   revalidatePath('/admin/orders')
   revalidatePath(`/admin/orders/${orderId}`)
 
-  // Resolved here rather than inside the callback below: see pushUrl.
-  const orderUrl = await pushUrl(`/orders/${orderId}`)
+  // Resolved here rather than inside the callback below: see sendPushToAdmins.
+  const origin = await getSiteOrigin()
 
   // Notifying the café runs after the response is sent — a slow or hanging
   // push service must never stall the status-update click itself.
   after(async () => {
     try {
       const shortId = orderId.split('-')[0].toUpperCase()
-      await sendPushToCafe(updated.cafe_id, {
-        title: 'Order status updated',
-        body: `Your order #${shortId} is now ${ORDER_STATUS_LABELS[parsed.data.status]}`,
-        url: orderUrl,
-      })
+      await sendPushToCafe(
+        updated.cafe_id,
+        {
+          title: 'Order status updated',
+          body: `Your order #${shortId} is now ${ORDER_STATUS_LABELS[parsed.data.status]}`,
+          path: `/orders/${orderId}`,
+        },
+        origin,
+      )
     } catch (err) {
       logger.error('Failed to notify café of status change', {
         orderId,
