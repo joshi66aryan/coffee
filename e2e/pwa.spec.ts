@@ -36,6 +36,16 @@ test.describe('Offline fallback page', () => {
     const html = await (await request.get('/offline')).text()
     expect(html).toContain("You&#x27;re offline")
   })
+
+  // The service worker serves this markup in answer to whichever navigation
+  // failed, without changing the address — so the retry has to be relative to
+  // the document ("?"), or it drops the page the person was trying to open.
+  // Asserted on the served HTML because that is what a browser with no network
+  // gets: none of the app's JavaScript runs here.
+  test('retry link is relative to the failed page, not the home page', async ({ request }) => {
+    const html = await (await request.get('/offline')).text()
+    expect(html).toContain('href="?"')
+  })
 })
 
 test.describe('Service worker script', () => {

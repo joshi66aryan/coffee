@@ -106,12 +106,23 @@ export default function OfflinePage() {
         connection and try again.
       </p>
 
-      {/* Plain anchor, not next/link — this needs a real network round-trip
-          through the service worker's fetch handler, not a client-side
-          router transition. */}
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+      {/* "?" is a query-only URL reference, which resolves to the document's
+          own path — and that path is the page that failed, since the service
+          worker answers a failed navigation with this page's markup without
+          changing the address. So "Try again" retries where you were actually
+          going instead of dropping you at the home page having lost it: click
+          an order notification while the connection is down, and the order id
+          was simply gone. (An empty href would resolve the same way, but is
+          not reliably exposed as a link.) Reached directly — the middleware
+          redirects here when Supabase itself is unreachable — it re-requests
+          this page, which is why home is offered underneath as well.
+
+          Plain anchors, not next/link: these need a real network round trip
+          through the service worker's fetch handler, not a client-side router
+          transition. And no onClick reload — this page is served from the
+          cache with no network, so none of the app's JavaScript is running. */}
       <a
-        href="/"
+        href="?"
         style={{
           marginTop: 32,
           display: 'inline-flex',
@@ -130,6 +141,21 @@ export default function OfflinePage() {
       >
         <RefreshCw style={{ width: 15, height: 15 }} />
         Try again
+      </a>
+
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+      <a
+        href="/"
+        style={{
+          marginTop: 18,
+          color: 'rgba(226,221,200,0.55)',
+          fontFamily: BODY_STACK,
+          fontSize: 14,
+          textDecoration: 'underline',
+          textUnderlineOffset: 4,
+        }}
+      >
+        Go to the home page
       </a>
 
       <p

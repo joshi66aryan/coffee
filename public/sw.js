@@ -7,7 +7,7 @@
 // Bump this whenever a precached asset's *content* changes (most often the
 // offline page) — activate only evicts caches whose name differs, so without
 // a bump every already-installed client keeps serving the stale precache.
-const CACHE_VERSION = 'sherpa-sips-v6'
+const CACHE_VERSION = 'sherpa-sips-v7'
 const OFFLINE_URL = '/offline'
 const PRECACHE_URLS = [OFFLINE_URL, '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
 
