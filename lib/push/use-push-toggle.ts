@@ -28,17 +28,36 @@ export function usePushToggle(initialSubscribed: boolean) {
   // which can be stale (a different browser/device that was never cleanly
   // unsubscribed). What this browser is actually subscribed to is the source
   // of truth for what the toggle should show.
+  //
+  // Every path below has to end in a definite answer. Reported from a phone:
+  // the switch read ON while no notification ever arrived, because the account
+  // was subscribed on a laptop and nothing here ever contradicted the server's
+  // `true`. A control that claims to be on is worse than one that is plainly
+  // off — the café stops looking for the problem.
   useEffect(() => {
-    if (unsupported) return
     let cancelled = false
-    hasBrowserPushSubscription().then(actuallySubscribed => {
-      if (!cancelled) setSubscribed(actuallySubscribed)
-    })
+
+    // A browser that cannot do push is definitively not subscribed — that is
+    // every browser on iOS outside an installed home-screen app, which is
+    // where the stale ON was being seen. Answered through the same promise as
+    // the real check so there is one place that settles the value.
+    const check = unsupported ? Promise.resolve(false) : hasBrowserPushSubscription()
+
+    check
+      .then(actuallySubscribed => {
+        if (!cancelled) setSubscribed(actuallySubscribed)
+      })
+      // iOS Safari outside an installed app exposes a registration with no
+      // usable pushManager, so the check throws rather than answering false.
+      // Untreated, the rejection left the server's stale value on screen.
+      .catch(() => {
+        if (!cancelled) setSubscribed(false)
+      })
+
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [unsupported])
 
   useEffect(() => {
     function handleChange(event: Event) {

@@ -85,6 +85,25 @@ describe('NotificationsRow (café Account page)', () => {
     expect(screen.getByText(/can’t show notifications/i)).toBeInTheDocument()
   })
 
+  // Reported from a phone: the switch read ON while no notification ever
+  // arrived. The account was subscribed on a laptop, so the server said true,
+  // and on a browser that cannot do push nothing ever said otherwise.
+  it('reads off on a browser that cannot do push, even when another device is subscribed', async () => {
+    mockIsPushSupported.mockReturnValue(false)
+
+    render(<NotificationsRow initialSubscribed={true} />)
+
+    await waitFor(() => expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false'))
+  })
+
+  it('reads off when the browser check throws rather than trusting the server', async () => {
+    mockHasBrowserPushSubscription.mockRejectedValue(new Error('no pushManager here'))
+
+    render(<NotificationsRow initialSubscribed={true} />)
+
+    await waitFor(() => expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false'))
+  })
+
   // Nothing mounts two of these at once now that App Settings has stopped
   // repeating the switch, but the shared hook state this pins is what the
   // home-page prompt banner and the admin toggles rely on.
