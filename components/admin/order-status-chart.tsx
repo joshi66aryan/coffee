@@ -21,7 +21,11 @@ const STATUS_BAR_CLASS: Record<OrderStatus, string> = {
   delivered: 'bg-olive-600',
 }
 
-const CHART_HEIGHT = 160
+// A floor, not a fixed height: the plot area grows to fill whatever room the
+// card has. This card shares a grid row with "Top Selling Products", and that
+// one gets taller once real product data fills its chart and table — the bars
+// stretch into that extra height instead of leaving it blank below them.
+const MIN_CHART_HEIGHT = 160
 
 export function OrderStatusChart({ counts }: { counts: StatusCount[] }) {
   const [hovered, setHovered] = useState<OrderStatus | null>(null)
@@ -33,8 +37,11 @@ export function OrderStatusChart({ counts }: { counts: StatusCount[] }) {
   const max = Math.max(1, ...counts.map(c => c.count))
 
   return (
-    <div role="img" aria-label="Orders by status">
-      <div className="flex items-end justify-between gap-4" style={{ height: CHART_HEIGHT }}>
+    <div role="img" aria-label="Orders by status" className="flex flex-1 flex-col">
+      <div
+        className="flex flex-1 items-end justify-between gap-4"
+        style={{ minHeight: MIN_CHART_HEIGHT }}
+      >
         {counts.map(({ status, count }) => {
           const heightPct = (count / max) * 100
           return (

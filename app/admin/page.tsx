@@ -87,11 +87,13 @@ export default async function AdminDashboardPage() {
         </section>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <section className="overflow-hidden rounded-xl border border-cream-300 bg-white">
+          {/* Both cards are flex columns so the shorter one's chart can absorb
+              the row's spare height rather than leave a gap under the bars. */}
+          <section className="flex flex-col overflow-hidden rounded-xl border border-cream-300 bg-white">
             <div className="border-b border-cream-300 bg-cream-100 px-5 py-3.5">
               <h2 className="display-sm text-brand-900">Orders by Status</h2>
             </div>
-            <div className="px-5 py-5">
+            <div className="flex flex-1 flex-col px-5 py-5">
               <OrderStatusChart counts={stats.statusCounts} />
             </div>
           </section>

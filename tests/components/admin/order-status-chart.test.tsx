@@ -24,6 +24,17 @@ describe('OrderStatusChart', () => {
     expect(screen.getByText('Delivered')).toBeInTheDocument()
   })
 
+  it('lets the plot area grow past its floor to fill a taller card', () => {
+    const { container } = render(<OrderStatusChart counts={counts} />)
+
+    const plot = container.querySelector('[aria-label="Orders by status"] > div')
+    // 160px is a floor, not a ceiling: the card shares a grid row with "Top
+    // Selling Products", which gets taller once product data loads, and the
+    // bars should take that height rather than leave a gap beneath them.
+    expect(plot).toHaveStyle({ minHeight: '160px' })
+    expect(plot?.getAttribute('style')).not.toMatch(/(^|[^-])height:/)
+  })
+
   it('renders the count for each status as a direct label', () => {
     render(<OrderStatusChart counts={counts} />)
     expect(screen.getByText('2')).toBeInTheDocument()
