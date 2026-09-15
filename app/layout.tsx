@@ -18,14 +18,23 @@ const bebasNeue = Bebas_Neue({
 // fighting it — keeps long-form UI copy readable at small sizes.
 const barlow = Barlow({
   variable: "--font-barlow",
-  weight: ["400", "500", "600", "700"],
+  // 400/500/600 only. Bebas carries every heading, so nothing in the product
+  // is set in Barlow 700 — and each declared weight is another woff2 the root
+  // layout preloads on every page whether or not the page uses it.
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
   display: "swap",
 });
 
+// Tabular face, used only for invoice numbers and order IDs — a handful of
+// rows on the order and admin queue screens. Declared here because the family
+// has to be, but not preloaded: a global preload made every other page fetch a
+// font it never renders, which is what the console warns about.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
